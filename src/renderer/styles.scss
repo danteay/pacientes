@@ -1,0 +1,255 @@
+// Import Bulma first
+@import 'bulma/bulma.scss';
+
+// Import React Draft WYSIWYG styles
+@import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
+
+// Override Bulma CSS custom properties with our color scheme
+:root {
+  // Custom colors
+  --dark-brown: #52423c;
+  --rose: #ad5c70;
+  --sand: #d3ad98;
+  --beige: #edd4be;
+  --grey-blue: #b9c3c4;
+
+  // Tonal variations for harmony
+  --rose-light: #c88a9a;
+  --rose-dark: #8b4a5a;
+  --sand-light: #e3c3ae;
+  --beige-dark: #d9c0a8;
+
+  // Override Bulma primary color (rose)
+  --bulma-primary-h: 345deg;
+  --bulma-primary-s: 33%;
+  --bulma-primary-l: 52%;
+
+  // Override Bulma info color (grey-blue - lighter for buttons)
+  --bulma-info-h: 183deg;
+  --bulma-info-s: 11%;
+  --bulma-info-l: 73%;
+
+  // Override Bulma warning color (sand - lighter)
+  --bulma-warning-h: 21deg;
+  --bulma-warning-s: 40%;
+  --bulma-warning-l: 78%;
+
+  // Override Bulma danger color (rose - darker)
+  --bulma-danger-h: 345deg;
+  --bulma-danger-s: 33%;
+  --bulma-danger-l: 45%;
+
+  // Override Bulma light color (very light beige)
+  --bulma-light-h: 28deg;
+  --bulma-light-s: 35%;
+  --bulma-light-l: 88%;
+
+  // Override Bulma dark color (dark brown)
+  --bulma-dark-h: 16deg;
+  --bulma-dark-s: 15%;
+  --bulma-dark-l: 28%;
+
+  // Override text color (dark brown)
+  --bulma-text-h: 16deg;
+  --bulma-text-s: 15%;
+  --bulma-text-l: 28%;
+
+  // Override link color (rose)
+  --bulma-link-h: 345deg;
+  --bulma-link-s: 33%;
+  --bulma-link-l: 52%;
+
+  // Override scheme colors for backgrounds (beige)
+  --bulma-scheme-main: #edd4be;
+  --bulma-scheme-main-bis: #f5e8dc;
+  --bulma-scheme-main-ter: #faf3ed;
+
+  // Override background color (very light sand)
+  --bulma-background: #f5e8dc;
+
+  // Override border colors (grey-blue - softer)
+  --bulma-border: #c9d3d4;
+  --bulma-border-weak: #e3d8cd;
+
+  // Box shadows - subtle with warm tones
+  --bulma-shadow-color: rgba(82, 66, 60, 0.1);
+}
+
+// Custom component styling for better harmony
+.box {
+  background: linear-gradient(135deg, #faf3ed 0%, #f5e8dc 100%);
+  border: 1px solid var(--bulma-border-weak);
+  box-shadow: 0 1px 4px var(--bulma-shadow-color);
+}
+
+.hero {
+  background: linear-gradient(135deg, var(--rose) 0%, var(--rose-dark) 100%);
+
+  .title,
+  .subtitle {
+    color: white !important;
+  }
+}
+
+.table {
+  background: linear-gradient(to bottom, #faf3ed 0%, rgba(250, 243, 237, 0.5) 100%);
+
+  thead {
+    background: linear-gradient(135deg, var(--beige) 0%, var(--beige-dark) 100%);
+
+    th {
+      color: var(--dark-brown) !important;
+      font-weight: 600;
+      border-bottom: 2px solid var(--sand);
+    }
+  }
+
+  tbody {
+    tr {
+      &:hover {
+        background-color: rgba(237, 212, 190, 0.3);
+      }
+    }
+
+    td {
+      color: var(--dark-brown) !important;
+      border-bottom: 1px solid var(--bulma-border-weak);
+    }
+  }
+}
+
+.input,
+.textarea,
+.select select {
+  background-color: white;
+  border-color: var(--grey-blue);
+  color: var(--dark-brown) !important;
+
+  &::placeholder {
+    color: rgba(82, 66, 60, 0.5);
+  }
+
+  &:focus {
+    border-color: var(--rose);
+    box-shadow: 0 0 0 0.125em rgba(173, 92, 112, 0.25);
+  }
+}
+
+.label {
+  color: var(--dark-brown) !important;
+  font-weight: 600;
+}
+
+.button {
+  font-weight: 500;
+
+  &.is-primary {
+    background-color: var(--rose);
+    border-color: var(--rose);
+    color: white !important;
+
+    &:hover {
+      background-color: var(--rose-dark);
+      border-color: var(--rose-dark);
+      color: white !important;
+    }
+  }
+
+  &.is-info {
+    background-color: var(--grey-blue);
+    border-color: var(--grey-blue);
+    color: var(--dark-brown) !important;
+
+    &:hover {
+      background-color: #a8b2b3;
+      border-color: #a8b2b3;
+      color: var(--dark-brown) !important;
+    }
+  }
+
+  &.is-warning {
+    background-color: var(--sand);
+    border-color: var(--sand);
+    color: var(--dark-brown) !important;
+
+    &:hover {
+      background-color: var(--sand-light);
+      border-color: var(--sand-light);
+      color: var(--dark-brown) !important;
+    }
+  }
+
+  &.is-danger {
+    background-color: var(--rose-dark);
+    border-color: var(--rose-dark);
+    color: white !important;
+
+    &:hover {
+      background-color: #6d3a47;
+      border-color: #6d3a47;
+      color: white !important;
+    }
+  }
+
+  &.is-light {
+    background-color: white;
+    border-color: var(--grey-blue);
+    color: var(--dark-brown) !important;
+
+    &:hover {
+      background-color: var(--bulma-scheme-main-bis);
+      border-color: var(--sand);
+      color: var(--dark-brown) !important;
+    }
+  }
+}
+
+// Patient info section styling
+.content {
+  color: var(--dark-brown) !important;
+
+  strong {
+    color: var(--dark-brown) !important;
+  }
+
+  p {
+    color: var(--dark-brown) !important;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    color: var(--dark-brown) !important;
+  }
+}
+
+// Notification styling
+.notification {
+  background: linear-gradient(135deg, #faf3ed 0%, #f5e8dc 100%);
+  color: var(--dark-brown) !important;
+  border: 1px solid var(--bulma-border-weak);
+}
+
+// Level component styling
+.level {
+  .level-item,
+  .level-left,
+  .level-right {
+    color: var(--dark-brown) !important;
+  }
+}
+
+// Title styling
+.title,
+.subtitle {
+  color: var(--dark-brown) !important;
+
+  &.is-4,
+  &.is-5,
+  &.is-6 {
+    color: var(--dark-brown) !important;
+  }
+}

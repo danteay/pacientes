@@ -60,7 +60,9 @@ describe('Users Service Integration Tests', () => {
       expect(patient.profession).toBe(patientData.profession);
       expect(patient.livesWith).toBe(patientData.livesWith);
       expect(patient.children).toBe(patientData.children);
-      expect(patient.previousPsychologicalExperience).toBe(patientData.previousPsychologicalExperience);
+      expect(patient.previousPsychologicalExperience).toBe(
+        patientData.previousPsychologicalExperience
+      );
       expect(patient.firstAppointmentDate).toBe(patientData.firstAppointmentDate);
       expect(patient.createdAt).toBeDefined();
       expect(patient.updatedAt).toBeDefined();
@@ -386,14 +388,14 @@ describe('Users Service Integration Tests', () => {
     it('should search patients by name', () => {
       const results = usersService.search('John');
       expect(results).toHaveLength(2); // John Smith and Bob Johnson
-      expect(results.some(p => p.name === 'John Smith')).toBe(true);
-      expect(results.some(p => p.name === 'Bob Johnson')).toBe(true);
+      expect(results.some((p) => p.name === 'John Smith')).toBe(true);
+      expect(results.some((p) => p.name === 'Bob Johnson')).toBe(true);
     });
 
     it('should search patients by email', () => {
       const results = usersService.search('example.com');
       expect(results).toHaveLength(2); // John and Jane with example.com
-      expect(results.some(p => p.email.includes('example.com'))).toBe(true);
+      expect(results.some((p) => p.email.includes('example.com'))).toBe(true);
     });
 
     it('should search patients by phone number', () => {
@@ -489,7 +491,7 @@ describe('Users Service Integration Tests', () => {
       });
 
       // Update
-      const updated = usersService.update({
+      usersService.update({
         id: created.id!,
         age: 31,
       });

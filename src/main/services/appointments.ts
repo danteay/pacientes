@@ -30,7 +30,7 @@ export class Appointments {
 
     const rows = stmt.all(patientId);
 
-    return rows.map((row) => this.rowToNote(row));
+    return rows.map((row) => this.rowToNote(row as Record<string, unknown>));
   }
 
   getById(id: number): Note | undefined {
@@ -41,7 +41,7 @@ export class Appointments {
       return undefined;
     }
 
-    return this.rowToNote(row);
+    return this.rowToNote(row as Record<string, unknown>);
   }
 
   update(noteData: NoteUpdateInput): Note | undefined {
@@ -53,7 +53,7 @@ export class Appointments {
     }
 
     const setClause = fields.map((field) => `${field} = ?`).join(', ');
-    const values = fields.map((field) => (updateFields as any)[field]);
+    const values = fields.map((field) => updateFields[field as keyof Omit<NoteUpdateInput, 'id'>]);
 
     const query = `
       UPDATE notes
@@ -75,14 +75,14 @@ export class Appointments {
     return info.changes > 0;
   }
 
-  private rowToNote(row: any): Note {
+  private rowToNote(row: Record<string, unknown>): Note {
     return {
-      id: row.id,
-      patientId: row.patientId,
-      title: row.title,
-      content: row.content,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+      id: row.id as number | undefined,
+      patientId: row.patientId as number,
+      title: row.title as string,
+      content: row.content as string,
+      createdAt: row.createdAt as string | undefined,
+      updatedAt: row.updatedAt as string | undefined,
     };
   }
 }

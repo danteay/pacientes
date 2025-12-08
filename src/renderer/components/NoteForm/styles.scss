@@ -1,0 +1,18 @@
+// NoteForm specific styles
+
+// Draft.js editor styling
+.draft-wrapper {
+  border: 1px solid var(--grey-blue);
+  border-radius: 4px;
+  background: white;
+}
+
+.draft-editor {
+  min-height: 300px;
+  padding: 1rem;
+  color: var(--dark-brown) !important;
+
+  .public-DraftEditor-content {
+    color: var(--dark-brown) !important;
+  }
+}

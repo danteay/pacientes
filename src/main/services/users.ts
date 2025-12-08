@@ -1,5 +1,11 @@
 import Database from 'better-sqlite3';
-import { Patient, PatientCreateInput, PatientUpdateInput } from '../../types/patient';
+import {
+  Patient,
+  PatientCreateInput,
+  PatientUpdateInput,
+  MaritalStatus,
+  Gender,
+} from '../../types/patient';
 
 export class Users {
   private db: Database.Database;
@@ -48,14 +54,14 @@ export class Users {
       return undefined;
     }
 
-    return this.rowToPatient(row);
+    return this.rowToPatient(row as Record<string, unknown>);
   }
 
   getAll(): Patient[] {
     const stmt = this.db.prepare('SELECT * FROM patients ORDER BY createdAt DESC, id DESC');
     const rows = stmt.all();
 
-    return rows.map((row) => this.rowToPatient(row));
+    return rows.map((row) => this.rowToPatient(row as Record<string, unknown>));
   }
 
   update(patientData: PatientUpdateInput): Patient | undefined {
@@ -67,7 +73,9 @@ export class Users {
     }
 
     const setClause = fields.map((field) => `${field} = ?`).join(', ');
-    const values = fields.map((field) => (updateFields as any)[field]);
+    const values = fields.map(
+      (field) => updateFields[field as keyof Omit<PatientUpdateInput, 'id'>]
+    );
 
     const query = `
       UPDATE patients
@@ -99,7 +107,7 @@ export class Users {
 
     const rows = stmt.all(likeTerm, likeTerm, likeTerm);
 
-    return rows.map((row) => this.rowToPatient(row));
+    return rows.map((row) => this.rowToPatient(row as Record<string, unknown>));
   }
 
   updateFirstAppointmentDate(patientId: number, date: string): void {
@@ -112,24 +120,24 @@ export class Users {
     console.log(`Set first appointment date for patient ${patientId}: ${date}`);
   }
 
-  private rowToPatient(row: any): Patient {
+  private rowToPatient(row: Record<string, unknown>): Patient {
     return {
-      id: row.id,
-      name: row.name,
-      age: row.age,
-      email: row.email,
-      phoneNumber: row.phoneNumber,
-      birthDate: row.birthDate,
-      maritalStatus: row.maritalStatus,
-      gender: row.gender,
-      educationalLevel: row.educationalLevel,
-      profession: row.profession,
-      livesWith: row.livesWith,
-      children: row.children,
-      previousPsychologicalExperience: row.previousPsychologicalExperience,
-      firstAppointmentDate: row.firstAppointmentDate,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+      id: row.id as number | undefined,
+      name: row.name as string,
+      age: row.age as number,
+      email: row.email as string,
+      phoneNumber: row.phoneNumber as string,
+      birthDate: row.birthDate as string,
+      maritalStatus: row.maritalStatus as MaritalStatus,
+      gender: row.gender as Gender,
+      educationalLevel: row.educationalLevel as string,
+      profession: row.profession as string,
+      livesWith: row.livesWith as string,
+      children: row.children as number,
+      previousPsychologicalExperience: row.previousPsychologicalExperience as string | undefined,
+      firstAppointmentDate: row.firstAppointmentDate as string | undefined,
+      createdAt: row.createdAt as string | undefined,
+      updatedAt: row.updatedAt as string | undefined,
     };
   }
 }

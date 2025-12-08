@@ -5,7 +5,7 @@ export async function up({ context }: MigrationParams<Database.Database>): Promi
   const db = context;
 
   // Check if column already exists
-  const columns = db.prepare('PRAGMA table_info(patients)').all() as any[];
+  const columns = db.prepare('PRAGMA table_info(patients)').all() as Array<{ name: string }>;
   const hasColumn = columns.some((col) => col.name === 'firstAppointmentDate');
 
   if (!hasColumn) {

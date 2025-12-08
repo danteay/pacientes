@@ -89,19 +89,19 @@ describe('Appointments Service Integration Tests', () => {
     });
 
     it('should allow multiple notes for the same patient', () => {
-      const note1 = appointmentsService.create({
+      appointmentsService.create({
         patientId: testPatientId,
         title: 'Session 1',
         content: 'First session.',
       });
 
-      const note2 = appointmentsService.create({
+      appointmentsService.create({
         patientId: testPatientId,
         title: 'Session 2',
         content: 'Second session.',
       });
 
-      const note3 = appointmentsService.create({
+      appointmentsService.create({
         patientId: testPatientId,
         title: 'Session 3',
         content: 'Third session.',
@@ -402,7 +402,7 @@ describe('Appointments Service Integration Tests', () => {
       });
 
       // Update
-      const updated = appointmentsService.update({
+      appointmentsService.update({
         id: created.id!,
         title: 'Updated Integrity Test',
       });
@@ -433,7 +433,7 @@ describe('Appointments Service Integration Tests', () => {
       expect(allNotes).toHaveLength(5);
 
       // All notes should have unique IDs
-      const ids = allNotes.map(n => n.id);
+      const ids = allNotes.map((n) => n.id);
       const uniqueIds = new Set(ids);
       expect(uniqueIds.size).toBe(5);
     });
@@ -473,7 +473,7 @@ describe('Appointments Service Integration Tests', () => {
     });
 
     it('should handle special characters in content', () => {
-      const specialContent = "Test with 'quotes', \"double quotes\", and special chars: <>&";
+      const specialContent = 'Test with \'quotes\', "double quotes", and special chars: <>&';
 
       const noteData: NoteCreateInput = {
         patientId: testPatientId,

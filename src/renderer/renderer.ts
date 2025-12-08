@@ -1,5 +1,11 @@
-import { Patient, PatientCreateInput, MaritalStatus, Gender } from '../types/patient';
-import { Note, NoteCreateInput } from '../types/note';
+import {
+  Patient,
+  PatientCreateInput,
+  PatientUpdateInput,
+  MaritalStatus,
+  Gender,
+} from '../types/patient';
+import { Note, NoteCreateInput, NoteUpdateInput } from '../types/note';
 
 // Type declaration for the API exposed by preload script
 declare global {
@@ -9,7 +15,7 @@ declare global {
         create: (patientData: PatientCreateInput) => Promise<ApiResponse<Patient>>;
         getAll: () => Promise<ApiResponse<Patient[]>>;
         getById: (id: number) => Promise<ApiResponse<Patient>>;
-        update: (patientData: any) => Promise<ApiResponse<Patient>>;
+        update: (patientData: PatientUpdateInput) => Promise<ApiResponse<Patient>>;
         delete: (id: number) => Promise<ApiResponse>;
         search: (searchTerm: string) => Promise<ApiResponse<Patient[]>>;
       };
@@ -17,14 +23,18 @@ declare global {
         create: (noteData: NoteCreateInput) => Promise<ApiResponse<Note>>;
         getByPatientId: (patientId: number) => Promise<ApiResponse<Note[]>>;
         getById: (id: number) => Promise<ApiResponse<Note>>;
-        update: (noteData: any) => Promise<ApiResponse<Note>>;
+        update: (noteData: NoteUpdateInput) => Promise<ApiResponse<Note>>;
         delete: (id: number) => Promise<ApiResponse>;
       };
     };
+    editPatient: (id: number) => Promise<void>;
+    deletePatient: (id: number) => Promise<void>;
+    viewAppointmentNotes: (id: number) => Promise<void>;
+    viewNoteDetails: (id: number) => Promise<void>;
   }
 }
 
-interface ApiResponse<T = any> {
+interface ApiResponse<T = unknown> {
   success: boolean;
   data?: T;
   error?: string;
@@ -201,10 +211,12 @@ function fillForm(patient: Patient): void {
   (document.getElementById('email') as HTMLInputElement).value = patient.email;
   (document.getElementById('phoneNumber') as HTMLInputElement).value = patient.phoneNumber;
   (document.getElementById('birthDate') as HTMLInputElement).value = patient.birthDate;
-  (document.getElementById('firstAppointmentDate') as HTMLInputElement).value = patient.firstAppointmentDate || '';
+  (document.getElementById('firstAppointmentDate') as HTMLInputElement).value =
+    patient.firstAppointmentDate || '';
   (document.getElementById('maritalStatus') as HTMLSelectElement).value = patient.maritalStatus;
   (document.getElementById('gender') as HTMLSelectElement).value = patient.gender;
-  (document.getElementById('educationalLevel') as HTMLInputElement).value = patient.educationalLevel;
+  (document.getElementById('educationalLevel') as HTMLInputElement).value =
+    patient.educationalLevel;
   (document.getElementById('profession') as HTMLInputElement).value = patient.profession;
   (document.getElementById('livesWith') as HTMLInputElement).value = patient.livesWith;
   (document.getElementById('children') as HTMLInputElement).value = patient.children.toString();
@@ -225,7 +237,9 @@ async function handleFormSubmit(event: Event): Promise<void> {
 }
 
 function getFormData(): PatientCreateInput {
-  const firstAppointmentDateInput = (document.getElementById('firstAppointmentDate') as HTMLInputElement).value;
+  const firstAppointmentDateInput = (
+    document.getElementById('firstAppointmentDate') as HTMLInputElement
+  ).value;
 
   return {
     name: (document.getElementById('name') as HTMLInputElement).value,
@@ -233,14 +247,20 @@ function getFormData(): PatientCreateInput {
     email: (document.getElementById('email') as HTMLInputElement).value,
     phoneNumber: (document.getElementById('phoneNumber') as HTMLInputElement).value,
     birthDate: (document.getElementById('birthDate') as HTMLInputElement).value,
-    maritalStatus: (document.getElementById('maritalStatus') as HTMLSelectElement).value as MaritalStatus,
+    maritalStatus: (document.getElementById('maritalStatus') as HTMLSelectElement)
+      .value as MaritalStatus,
     gender: (document.getElementById('gender') as HTMLSelectElement).value as Gender,
     educationalLevel: (document.getElementById('educationalLevel') as HTMLInputElement).value,
     profession: (document.getElementById('profession') as HTMLInputElement).value,
     livesWith: (document.getElementById('livesWith') as HTMLInputElement).value,
     children: parseInt((document.getElementById('children') as HTMLInputElement).value),
-    previousPsychologicalExperience: (document.getElementById('previousPsychologicalExperience') as HTMLTextAreaElement).value,
-    firstAppointmentDate: firstAppointmentDateInput && firstAppointmentDateInput.trim() !== '' ? firstAppointmentDateInput : undefined,
+    previousPsychologicalExperience: (
+      document.getElementById('previousPsychologicalExperience') as HTMLTextAreaElement
+    ).value,
+    firstAppointmentDate:
+      firstAppointmentDateInput && firstAppointmentDateInput.trim() !== ''
+        ? firstAppointmentDateInput
+        : undefined,
   };
 }
 
@@ -256,7 +276,7 @@ async function createPatient(patientData: PatientCreateInput): Promise<void> {
   }
 }
 
-async function updatePatient(patientData: any): Promise<void> {
+async function updatePatient(patientData: PatientUpdateInput): Promise<void> {
   const response = await window.api.patient.update(patientData);
 
   if (response.success) {
@@ -269,7 +289,7 @@ async function updatePatient(patientData: any): Promise<void> {
 }
 
 // Global functions for inline event handlers
-(window as any).editPatient = async (id: number) => {
+window.editPatient = async (id: number) => {
   const response = await window.api.patient.getById(id);
 
   if (response.success && response.data) {
@@ -279,7 +299,7 @@ async function updatePatient(patientData: any): Promise<void> {
   }
 };
 
-(window as any).deletePatient = async (id: number) => {
+window.deletePatient = async (id: number) => {
   if (confirm('Are you sure you want to delete this patient?')) {
     const response = await window.api.patient.delete(id);
 
@@ -292,7 +312,7 @@ async function updatePatient(patientData: any): Promise<void> {
   }
 };
 
-(window as any).viewAppointmentNotes = async (id: number) => {
+window.viewAppointmentNotes = async (id: number) => {
   currentPatientIdForNotes = id;
 
   // Load patient info
@@ -426,7 +446,7 @@ function formatDate(dateString: string): string {
   });
 }
 
-(window as any).viewNoteDetails = async (id: number) => {
+window.viewNoteDetails = async (id: number) => {
   const response = await window.api.note.getById(id);
 
   if (response.success && response.data) {
@@ -508,7 +528,11 @@ async function createNote(noteData: NoteCreateInput): Promise<void> {
   }
 }
 
-async function updateNote(noteData: { id: number; title?: string; content?: string }): Promise<void> {
+async function updateNote(noteData: {
+  id: number;
+  title?: string;
+  content?: string;
+}): Promise<void> {
   const response = await window.api.note.update(noteData);
 
   if (response.success) {
