@@ -1,111 +1,98 @@
-import React, { Component } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import PatientNotes from '../../components/PatientNotes/PatientNotes';
-import type { Patient, Note } from '../../App';
+import { PatientNotes } from '../../components/PatientNotes/PatientNotes';
+import { LoadingSpinner } from '../../components/atoms/LoadingSpinner/LoadingSpinner';
+import { useNotification } from '../../context/NotificationContext';
+import { ipcClient } from '../../api';
+import { unwrapApiResponse } from '../../api/types';
+import type { Patient, Note } from '../../../types/patient';
 
-interface PatientDetailsProps {
-  patientId?: string;
-}
-
-interface PatientDetailsState {
-  patient: Patient | null;
-  isLoading: boolean;
-}
-
-class PatientDetailsBase extends Component<
-  PatientDetailsProps & { navigate: ReturnType<typeof useNavigate> },
-  PatientDetailsState
-> {
-  constructor(props: PatientDetailsProps & { navigate: ReturnType<typeof useNavigate> }) {
-    super(props);
-    this.state = {
-      patient: null,
-      isLoading: true,
-    };
-  }
-
-  async componentDidMount() {
-    const { patientId } = this.props;
-
-    if (patientId) {
-      try {
-        const result = await window.api.patient.getById(parseInt(patientId));
-        if (result.success && result.data) {
-          this.setState({ patient: result.data, isLoading: false });
-        } else {
-          console.error('Failed to load patient:', result.error);
-          this.setState({ isLoading: false });
-        }
-      } catch (error) {
-        console.error('Error loading patient:', error);
-        this.setState({ isLoading: false });
-      }
-    }
-  }
-
-  handleBack = () => {
-    this.props.navigate('/');
-  };
-
-  handleAddNote = () => {
-    const { patientId } = this.props;
-    this.props.navigate(`/patient/${patientId}/note/new`);
-  };
-
-  handleEditNote = (note: Note) => {
-    const { patientId } = this.props;
-    this.props.navigate(`/patient/${patientId}/note/edit/${note.id}`);
-  };
-
-  handleViewNote = (note: Note) => {
-    const { patientId } = this.props;
-    this.props.navigate(`/patient/${patientId}/note/${note.id}`);
-  };
-
-  render() {
-    const { patient, isLoading } = this.state;
-
-    if (isLoading) {
-      return (
-        <section className="section">
-          <div className="container">
-            <div className="notification is-info is-light">
-              <p>Loading patient information...</p>
-            </div>
-          </div>
-        </section>
-      );
-    }
-
-    if (!patient) {
-      return (
-        <section className="section">
-          <div className="container">
-            <div className="notification is-danger is-light">
-              <p>Patient not found.</p>
-            </div>
-          </div>
-        </section>
-      );
-    }
-
-    return (
-      <PatientNotes
-        patient={patient}
-        onBack={this.handleBack}
-        onAddNote={this.handleAddNote}
-        onEditNote={this.handleEditNote}
-        onViewNote={this.handleViewNote}
-      />
-    );
-  }
-}
+/**
+ * Patient Details Page (Refactored)
+ *
+ * Displays patient information and notes
+ * Uses hooks for state management and data fetching
+ */
 
 const PatientDetails: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
+  const { showError } = useNotification();
 
-  return <PatientDetailsBase patientId={patientId} navigate={navigate} />;
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadPatient = async () => {
+      if (!patientId) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        const response = await ipcClient.getPatientById(parseInt(patientId));
+        const data = unwrapApiResponse(response);
+        setPatient(data);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to load patient';
+        showError(errorMessage);
+        console.error('Error loading patient:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadPatient();
+  }, [patientId, showError]);
+
+  const handleBack = () => {
+    navigate('/');
+  };
+
+  const handleAddNote = () => {
+    navigate(`/patient/${patientId}/note/new`);
+  };
+
+  const handleEditNote = (note: Note) => {
+    navigate(`/patient/${patientId}/note/edit/${note.id}`);
+  };
+
+  const handleViewNote = (note: Note) => {
+    navigate(`/patient/${patientId}/note/${note.id}`);
+  };
+
+  if (isLoading) {
+    return (
+      <section className="section">
+        <div className="container">
+          <LoadingSpinner message="Loading patient information..." />
+        </div>
+      </section>
+    );
+  }
+
+  if (!patient) {
+    return (
+      <section className="section">
+        <div className="container">
+          <div className="notification is-danger is-light">
+            <p>Patient not found.</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <PatientNotes
+      patient={patient}
+      onBack={handleBack}
+      onAddNote={handleAddNote}
+      onEditNote={handleEditNote}
+      onViewNote={handleViewNote}
+    />
+  );
 };
 
 export default PatientDetails;

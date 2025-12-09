@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
-import type { Note } from '../../App';
-import './NoteView.styles.scss';
+import type { Note } from '../../../types/note';
+import './styles.scss';
 
 interface NoteViewProps {
   note: Note;

@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
-import type { Patient } from '../../App';
+import type { Patient } from '../../../types/patient';
+import { MaritalStatus, PatientStatus, Gender } from '../../../types/patient';
 import './PatientForm.styles.scss';
 
 interface PatientFormProps {
@@ -22,14 +23,15 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
         email: '',
         phoneNumber: '',
         birthDate: '',
-        maritalStatus: '',
-        gender: '',
+        maritalStatus: MaritalStatus.NOT_SPECIFIED,
+        gender: Gender.NOT_SPECIFIED,
         educationalLevel: '',
         profession: '',
         livesWith: '',
         children: 0,
         previousPsychologicalExperience: '',
         firstAppointmentDate: '',
+        status: PatientStatus.ACTIVE,
       },
     };
   }
@@ -259,6 +261,31 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
                   </div>
                 </div>
 
+                <div className="column">
+                  <div className="field">
+                    <label className="label" htmlFor="status">
+                      Patient Status *
+                    </label>
+                    <div className="control">
+                      <div className="select is-fullwidth">
+                        <select
+                          id="status"
+                          name="status"
+                          value={formData.status}
+                          onChange={this.handleChange}
+                          required
+                        >
+                          <option value="active">Active</option>
+                          <option value="paused">Paused</option>
+                          <option value="medical_discharge">Medical Discharge</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="columns">
                 <div className="column">
                   <div className="field">
                     <label className="label" htmlFor="children">

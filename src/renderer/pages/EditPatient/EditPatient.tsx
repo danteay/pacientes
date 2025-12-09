@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import PatientForm from '../../components/PatientForm/PatientForm';
-import type { Patient } from '../../App';
+import type { Patient } from '../../../types/patient';
 
 interface EditPatientProps {
   patientId?: string;

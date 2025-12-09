@@ -1,5 +1,8 @@
 import React from 'react';
 import { HashRouter as Router, Routes, Route } from 'react-router-dom';
+import { NotificationProvider, useNotification } from './context/NotificationContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { NotificationToast } from './components/molecules/NotificationToast/NotificationToast';
 import Navbar from './components/Navbar/Navbar';
 import Home from './pages/Home/Home';
 import EditPatient from './pages/EditPatient/EditPatient';
@@ -7,41 +10,27 @@ import PatientDetails from './pages/PatientDetails/PatientDetails';
 import NoteEditor from './pages/NoteEditor/NoteEditor';
 import NoteDetails from './pages/NoteDetails/NoteDetails';
 
-export interface Patient {
-  id?: number;
-  name: string;
-  age: number;
-  email: string;
-  phoneNumber: string;
-  birthDate: string;
-  maritalStatus: string;
-  gender: string;
-  educationalLevel: string;
-  profession: string;
-  livesWith: string;
-  children: number;
-  previousPsychologicalExperience?: string | null;
-  firstAppointmentDate?: string | null;
-  createdAt?: string;
-  updatedAt?: string;
-}
+/**
+ * App Component (Refactored)
+ *
+ * Main application component with:
+ * - Context providers for global state
+ * - Error boundaries for error handling
+ * - Routing configuration
+ * - Notification system
+ *
+ * This is the fully migrated version using all new architectural patterns
+ */
 
-export interface Note {
-  id?: number;
-  patientId: number;
-  title: string;
-  content: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
+const AppContent: React.FC = () => {
+  const { notifications, hideNotification } = useNotification();
 
-class App extends React.Component {
-  render() {
-    return (
+  return (
+    <>
+      <NotificationToast notifications={notifications} onClose={hideNotification} />
       <Router>
-        <div>
-          <Navbar />
-
+        <Navbar />
+        <ErrorBoundary>
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/patient/new" element={<EditPatient />} />
@@ -51,10 +40,20 @@ class App extends React.Component {
             <Route path="/patient/:patientId/note/edit/:noteId" element={<NoteEditor />} />
             <Route path="/patient/:patientId/note/:noteId" element={<NoteDetails />} />
           </Routes>
-        </div>
+        </ErrorBoundary>
       </Router>
-    );
-  }
-}
+    </>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <NotificationProvider>
+        <AppContent />
+      </NotificationProvider>
+    </ErrorBoundary>
+  );
+};
 
 export default App;

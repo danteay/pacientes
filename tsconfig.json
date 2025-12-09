@@ -11,8 +11,9 @@
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
     "moduleResolution": "node",
-    "types": ["node"]
+    "types": ["node", "jest"],
+    "jsx": "react"
   },
-  "include": ["src/main/**/*", "src/preload/**/*", "src/types/**/*"],
-  "exclude": ["node_modules", "dist", "out", "src/renderer"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist", "out"]
 }

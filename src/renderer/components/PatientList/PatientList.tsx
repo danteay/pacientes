@@ -1,6 +1,18 @@
-import React, { Component } from 'react';
-import type { Patient } from '../../App';
+import React, { useEffect, useState } from 'react';
+import { Patient, PatientStatus } from '../../../types/patient';
+import { usePatients } from '../../hooks/usePatients';
+import { useNotification } from '../../context/NotificationContext';
+import { SearchBar } from '../molecules/SearchBar/SearchBar';
+import { Button } from '../atoms/Button/Button';
+import { LoadingSpinner } from '../atoms/LoadingSpinner/LoadingSpinner';
 import './PatientList.styles.scss';
+
+/**
+ * Patient List Component
+ *
+ * Functional component using hooks for state management
+ * Follows React best practices and composition patterns
+ */
 
 interface PatientListProps {
   onAddPatient: () => void;
@@ -8,147 +20,191 @@ interface PatientListProps {
   onViewNotes: (patient: Patient) => void;
 }
 
-interface PatientListState {
-  patients: Patient[];
-  searchTerm: string;
-  isLoading: boolean;
-}
+export const PatientList: React.FC<PatientListProps> = ({
+  onAddPatient,
+  onEditPatient,
+  onViewNotes,
+}) => {
+  const { patients, loading, error, loadPatients, searchPatients } = usePatients();
+  const { showError } = useNotification();
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState<string>('');
 
-class PatientList extends Component<PatientListProps, PatientListState> {
-  constructor(props: PatientListProps) {
-    super(props);
-    this.state = {
-      patients: [],
-      searchTerm: '',
-      isLoading: true,
-    };
-  }
+  useEffect(() => {
+    loadPatients();
+  }, [loadPatients]);
 
-  componentDidMount() {
-    this.loadPatients();
-  }
+  useEffect(() => {
+    if (error) {
+      showError(error.message);
+    }
+  }, [error, showError]);
 
-  loadPatients = async () => {
-    this.setState({ isLoading: true });
-    try {
-      const result = this.state.searchTerm
-        ? await window.api.patient.search(this.state.searchTerm)
-        : await window.api.patient.getAll();
+  const handleSearch = (term: string) => {
+    setSearchTerm(term);
+    const status = statusFilter !== 'all' ? statusFilter : undefined;
+    searchPatients(term, status);
+  };
 
-      if (result.success) {
-        this.setState({ patients: result.data });
-      } else {
-        console.error('Failed to load patients:', result.error);
-      }
-    } catch (error) {
-      console.error('Error loading patients:', error);
-    } finally {
-      this.setState({ isLoading: false });
+  const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const newStatus = e.target.value;
+    setStatusFilter(newStatus);
+
+    // Re-run search with new status filter
+    const status = newStatus !== 'all' ? newStatus : undefined;
+    searchPatients(searchTerm, status);
+  };
+
+  const getStatusBadgeClass = (status: PatientStatus): string => {
+    switch (status) {
+      case PatientStatus.ACTIVE:
+        return 'is-success';
+      case PatientStatus.PAUSED:
+        return 'is-warning';
+      case PatientStatus.MEDICAL_DISCHARGE:
+        return 'is-info';
+      default:
+        return 'is-light';
     }
   };
 
-  handleSearch = () => {
-    this.loadPatients();
-  };
-
-
-  handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    this.setState({ searchTerm: e.target.value });
-  };
-
-  handleSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      this.handleSearch();
+  const getStatusLabel = (status: PatientStatus): string => {
+    switch (status) {
+      case PatientStatus.ACTIVE:
+        return 'Active';
+      case PatientStatus.PAUSED:
+        return 'Paused';
+      case PatientStatus.MEDICAL_DISCHARGE:
+        return 'Medical Discharge';
+      default:
+        return status;
     }
   };
 
-  render() {
-    const { onAddPatient, onEditPatient, onViewNotes } = this.props;
-    const { patients, searchTerm, isLoading } = this.state;
-
+  if (loading && patients.length === 0) {
     return (
       <section className="section">
         <div className="container">
-          <div className="box">
-            <div className="field is-grouped">
-              <div className="control is-expanded">
-                <input
-                  type="text"
-                  placeholder="Search by name, email, or phone..."
-                  className="input"
-                  value={searchTerm}
-                  onChange={this.handleSearchInputChange}
-                  onKeyDown={this.handleSearchKeyDown}
-                />
-              </div>
-              <div className="control">
-                <button onClick={this.handleSearch} className="button is-info">
-                  Search
-                </button>
-              </div>
-              <div className="control">
-                <button onClick={onAddPatient} className="button is-primary">
-                  + Add Patient
-                </button>
-              </div>
-            </div>
-          </div>
-
-          {isLoading ? (
-            <div className="notification is-info is-light">
-              <p>Loading patients...</p>
-            </div>
-          ) : patients.length === 0 ? (
-            <div className="notification is-warning is-light">
-              <p>No patients found. Click the "Add Patient" button to add a new patient.</p>
-            </div>
-          ) : (
-            <div className="box">
-              <table className="table is-fullwidth is-striped is-hoverable">
-                <thead>
-                  <tr>
-                    <th>Name</th>
-                    <th>Age</th>
-                    <th>Phone Number</th>
-                    <th>Email</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {patients.map((patient) => (
-                    <tr key={patient.id}>
-                      <td>{patient.name}</td>
-                      <td>{patient.age}</td>
-                      <td>{patient.phoneNumber}</td>
-                      <td>{patient.email}</td>
-                      <td>
-                        <div className="buttons">
-                          <button
-                            onClick={() => onViewNotes(patient)}
-                            className="button is-small is-info"
-                            title="View notes"
-                          >
-                            Notes
-                          </button>
-                          <button
-                            onClick={() => onEditPatient(patient)}
-                            className="button is-small is-warning"
-                            title="Edit patient"
-                          >
-                            Edit
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+          <LoadingSpinner message="Loading patients..." />
         </div>
       </section>
     );
   }
-}
 
-export default PatientList;
+  return (
+    <section className="section">
+      <div className="container">
+        <div className="box">
+          <div className="columns">
+            <div className="column is-one-quarter">
+              <div className="field">
+                <label className="label" htmlFor="statusFilter">
+                  Filter by Status
+                </label>
+                <div className="control">
+                  <div className="select is-fullwidth">
+                    <select
+                      id="statusFilter"
+                      value={statusFilter}
+                      onChange={handleStatusFilterChange}
+                    >
+                      <option value="all">All Statuses</option>
+                      <option value={PatientStatus.ACTIVE}>Active</option>
+                      <option value={PatientStatus.PAUSED}>Paused</option>
+                      <option value={PatientStatus.MEDICAL_DISCHARGE}>Medical Discharge</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="column is-half">
+              <div className="field">
+                <label className="label" htmlFor="search">
+                  Search Patients
+                </label>
+                <div className="control">
+                  <SearchBar
+                    onSearch={handleSearch}
+                    placeholder="Search by name, email, or phone..."
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="column">
+              <div className="field">
+                <label className="label" style={{ visibility: 'hidden' }}>
+                  Action
+                </label>
+                <div className="control">
+                  <Button variant="primary" onClick={onAddPatient} isFullWidth>
+                    + Add Patient
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {patients.length === 0 ? (
+          <div className="notification is-warning is-light">
+            <p>
+              {statusFilter === 'all' && !searchTerm
+                ? 'No patients found. Click the "Add Patient" button to add a new patient.'
+                : 'No patients match the selected filters.'}
+            </p>
+          </div>
+        ) : (
+          <div className="box">
+            <table className="table is-fullwidth is-striped is-hoverable">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Age</th>
+                  <th>Phone Number</th>
+                  <th>Email</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {patients.map((patient) => (
+                  <tr key={patient.id}>
+                    <td>{patient.name}</td>
+                    <td>{patient.age}</td>
+                    <td>{patient.phoneNumber}</td>
+                    <td>{patient.email}</td>
+                    <td>
+                      <span className={`tag ${getStatusBadgeClass(patient.status)}`}>
+                        {getStatusLabel(patient.status)}
+                      </span>
+                    </td>
+                    <td>
+                      <div className="buttons">
+                        <Button
+                          variant="info"
+                          size="small"
+                          onClick={() => onViewNotes(patient)}
+                          title="View notes"
+                        >
+                          Notes
+                        </Button>
+                        <Button
+                          variant="warning"
+                          size="small"
+                          onClick={() => onEditPatient(patient)}
+                          title="Edit patient"
+                        >
+                          Edit
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+};

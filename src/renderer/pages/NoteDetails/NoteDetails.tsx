@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import NoteView from '../../components/NoteView/NoteView';
-import type { Note } from '../../App';
+import type { Note } from '../../../types/note';
 
 interface NoteDetailsProps {
   patientId?: string;

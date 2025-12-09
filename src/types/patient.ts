@@ -13,6 +13,7 @@ export interface Patient {
   children: number;
   previousPsychologicalExperience?: string;
   firstAppointmentDate?: string; // ISO date string, can be null
+  status: PatientStatus;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -23,6 +24,7 @@ export enum MaritalStatus {
   DIVORCED = 'divorced',
   WIDOWED = 'widowed',
   SEPARATED = 'separated',
+  NOT_SPECIFIED = 'not_specified',
 }
 
 export enum Gender {
@@ -30,6 +32,13 @@ export enum Gender {
   FEMALE = 'female',
   OTHER = 'other',
   PREFER_NOT_TO_SAY = 'prefer_not_to_say',
+  NOT_SPECIFIED = 'not_specified',
+}
+
+export enum PatientStatus {
+  ACTIVE = 'active',
+  PAUSED = 'paused',
+  MEDICAL_DISCHARGE = 'medical_discharge',
 }
 
 export interface PatientCreateInput extends Omit<Patient, 'id' | 'createdAt' | 'updatedAt'> {}

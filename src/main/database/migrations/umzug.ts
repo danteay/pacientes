@@ -1,9 +1,67 @@
-import { Umzug, JSONStorage, memoryStorage } from 'umzug';
+import { Umzug, JSONStorage, memoryStorage, MigrationParams } from 'umzug';
 import Database from 'better-sqlite3';
 import * as path from 'path';
 import * as os from 'os';
-import * as migration001 from './001-create-main-tables';
-import * as migration002 from './002-add-first-appointment-date';
+import * as fs from 'fs';
+
+/**
+ * Migration file interface
+ */
+interface MigrationModule {
+  up: (params: MigrationParams<Database.Database>) => Promise<void>;
+  down: (params: MigrationParams<Database.Database>) => Promise<void>;
+}
+
+/**
+ * Dynamically loads all migration files from the migrations directory
+ * @returns Array of migration configurations
+ */
+async function loadMigrations(): Promise<
+  Array<{
+    name: string;
+    up: (params: MigrationParams<Database.Database>) => Promise<void>;
+    down: (params: MigrationParams<Database.Database>) => Promise<void>;
+  }>
+> {
+  const migrationsDir = __dirname;
+  const files = fs
+    .readdirSync(migrationsDir)
+    .filter((file) => {
+      // Only include .ts or .js files that match migration pattern (###-*.ts/js)
+      const isMigrationFile = /^\d{3}-.*\.(ts|js)$/.test(file);
+      // Exclude umzug.ts/js itself
+      const isNotUmzug = !file.startsWith('umzug.');
+      return isMigrationFile && isNotUmzug;
+    })
+    .sort(); // Sort alphabetically to ensure correct order
+
+  const migrations = await Promise.all(
+    files.map(async (file) => {
+      const migrationPath = path.join(migrationsDir, file);
+      const migrationName = file.replace(/\.(ts|js)$/, '');
+
+      try {
+        // Dynamic import of migration module
+        const migrationModule = (await import(migrationPath)) as MigrationModule;
+
+        if (!migrationModule.up || !migrationModule.down) {
+          throw new Error(`Migration ${migrationName} must export both 'up' and 'down' functions`);
+        }
+
+        return {
+          name: migrationName,
+          up: migrationModule.up,
+          down: migrationModule.down,
+        };
+      } catch (error) {
+        console.error(`Failed to load migration ${migrationName}:`, error);
+        throw error;
+      }
+    })
+  );
+
+  return migrations;
+}
 
 /**
  * Creates and configures an Umzug instance for database migrations
@@ -12,28 +70,23 @@ import * as migration002 from './002-add-first-appointment-date';
  * @param storagePath - Optional custom path for migration storage file
  * @returns Configured Umzug instance
  */
-export function createUmzug(
+export async function createUmzug(
   db: Database.Database,
   useMemoryStorage: boolean = false,
   storagePath?: string
-): Umzug<Database.Database> {
+): Promise<Umzug<Database.Database>> {
   // Use home directory for migration tracking by default
   const defaultStoragePath = path.join(os.homedir(), '.pacientes_migrations.json');
   const finalStoragePath = storagePath || defaultStoragePath;
 
+  // Load all migrations dynamically
+  const migrations = await loadMigrations();
+
+  console.log(`Loaded ${migrations.length} migration(s):`);
+  migrations.forEach((m) => console.log(`  - ${m.name}`));
+
   return new Umzug({
-    migrations: [
-      {
-        name: '001-create-main-tables',
-        up: migration001.up,
-        down: migration001.down,
-      },
-      {
-        name: '002-add-first-appointment-date',
-        up: migration002.up,
-        down: migration002.down,
-      },
-    ],
+    migrations,
     context: db,
     storage: useMemoryStorage
       ? memoryStorage()
@@ -55,7 +108,7 @@ export async function runMigrations(
   useMemoryStorage: boolean = false,
   storagePath?: string
 ): Promise<void> {
-  const umzug = createUmzug(db, useMemoryStorage, storagePath);
+  const umzug = await createUmzug(db, useMemoryStorage, storagePath);
 
   try {
     const pending = await umzug.pending();
@@ -81,7 +134,7 @@ export async function runMigrations(
  * @param db - better-sqlite3 database instance
  */
 export async function revertMigration(db: Database.Database): Promise<void> {
-  const umzug = createUmzug(db);
+  const umzug = await createUmzug(db);
 
   try {
     await umzug.down();
@@ -98,7 +151,7 @@ export async function revertMigration(db: Database.Database): Promise<void> {
  * @returns Array of executed migration names
  */
 export async function getExecutedMigrations(db: Database.Database): Promise<string[]> {
-  const umzug = createUmzug(db);
+  const umzug = await createUmzug(db);
   const executed = await umzug.executed();
   return executed.map((m) => m.name);
 }
@@ -109,7 +162,7 @@ export async function getExecutedMigrations(db: Database.Database): Promise<stri
  * @returns Array of pending migration names
  */
 export async function getPendingMigrations(db: Database.Database): Promise<string[]> {
-  const umzug = createUmzug(db);
+  const umzug = await createUmzug(db);
   const pending = await umzug.pending();
   return pending.map((m) => m.name);
 }

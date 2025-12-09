@@ -1,0 +1,250 @@
+import Database from 'better-sqlite3';
+import * as path from 'path';
+import * as os from 'os';
+import { DatabaseDriver } from './driver/database-driver';
+import { PatientRepository, NoteRepository } from './repositories';
+import { PatientService } from '../services/patient-service';
+import { NoteService } from '../services/note-service';
+import { runMigrations } from './migrations/umzug';
+import { Patient, PatientCreateInput, PatientUpdateInput } from '../../types/patient';
+import { Note, NoteCreateInput, NoteUpdateInput } from '../../types/note';
+
+/**
+ * Database Service
+ *
+ * This is the main orchestrator that:
+ * - Initializes the database connection
+ * - Creates and manages the Driver, Repository, and Service layers
+ * - Provides a unified interface for the main process
+ * - Manages database lifecycle (initialization, migrations, closing)
+ *
+ * Layer Architecture:
+ * DatabaseService → Service Layer → Repository Layer → Driver Layer → Database
+ */
+export class DatabaseService {
+  private db: Database.Database | null = null;
+  private dbPath: string;
+  private initialized: boolean = false;
+
+  // Layers
+  private driver: DatabaseDriver | null = null;
+  private patientRepository: PatientRepository | null = null;
+  private noteRepository: NoteRepository | null = null;
+  private patientService: PatientService | null = null;
+  private noteService: NoteService | null = null;
+
+  constructor() {
+    // Use user's home directory for the database file
+    const homeDir = os.homedir();
+    this.dbPath = path.join(homeDir, 'pacientes_app.db');
+    console.log(`Database path: ${this.dbPath}`);
+  }
+
+  /**
+   * Initialize database and all layers
+   */
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    console.log('Initializing database with better-sqlite3...');
+    this.db = new Database(this.dbPath, { verbose: console.log });
+
+    // Enable foreign keys
+    this.db.pragma('foreign_keys = ON');
+
+    // Run migrations
+    await this.runMigrations();
+
+    // Initialize layers from bottom to top
+    this.driver = new DatabaseDriver(this.db);
+    this.patientRepository = new PatientRepository(this.driver);
+    this.noteRepository = new NoteRepository(this.driver);
+    this.patientService = new PatientService(this.patientRepository);
+    this.noteService = new NoteService(this.noteRepository, this.patientRepository);
+
+    this.initialized = true;
+    console.log('Database initialized successfully with all layers');
+  }
+
+  /**
+   * Run database migrations
+   */
+  private async runMigrations(): Promise<void> {
+    if (!this.db) throw new Error('Database not initialized');
+
+    console.log('Running database migrations...');
+    await runMigrations(this.db);
+    console.log('Database migrations completed');
+  }
+
+  // ==================== Patient Operations ====================
+
+  /**
+   * Create a new patient
+   */
+  createPatient(patientData: PatientCreateInput): Patient {
+    this.ensureInitialized();
+    return this.patientService!.createPatient(patientData);
+  }
+
+  /**
+   * Get patient by ID
+   */
+  getPatientById(id: number): Patient | undefined {
+    this.ensureInitialized();
+    return this.patientService!.getPatientById(id);
+  }
+
+  /**
+   * Get all patients
+   */
+  getAllPatients(): Patient[] {
+    this.ensureInitialized();
+    return this.patientService!.getAllPatients();
+  }
+
+  /**
+   * Update patient
+   */
+  updatePatient(patientData: PatientUpdateInput): Patient | undefined {
+    this.ensureInitialized();
+    return this.patientService!.updatePatient(patientData);
+  }
+
+  /**
+   * Delete patient
+   */
+  deletePatient(id: number): boolean {
+    this.ensureInitialized();
+    return this.patientService!.deletePatient(id);
+  }
+
+  /**
+   * Search patients with optional status filter
+   */
+  searchPatients(searchTerm: string, status?: string): Patient[] {
+    this.ensureInitialized();
+    return this.patientService!.searchPatients(searchTerm, status as any);
+  }
+
+  /**
+   * Get patient statistics
+   */
+  getPatientStatistics(): {
+    total: number;
+    withoutFirstAppointment: number;
+    averageAge: number;
+  } {
+    this.ensureInitialized();
+    return this.patientService!.getPatientStatistics();
+  }
+
+  // ==================== Note Operations ====================
+
+  /**
+   * Create a new note
+   * Automatically sets first appointment date if not set
+   */
+  createNote(noteData: NoteCreateInput): Note {
+    this.ensureInitialized();
+    return this.noteService!.createNote(noteData);
+  }
+
+  /**
+   * Get note by ID
+   */
+  getNoteById(id: number): Note | undefined {
+    this.ensureInitialized();
+    return this.noteService!.getNoteById(id);
+  }
+
+  /**
+   * Get all notes for a patient
+   */
+  getNotesByPatientId(patientId: number): Note[] {
+    this.ensureInitialized();
+    return this.noteService!.getNotesByPatientId(patientId);
+  }
+
+  /**
+   * Get all notes
+   */
+  getAllNotes(): Note[] {
+    this.ensureInitialized();
+    return this.noteService!.getAllNotes();
+  }
+
+  /**
+   * Update note
+   */
+  updateNote(noteData: NoteUpdateInput): Note | undefined {
+    this.ensureInitialized();
+    return this.noteService!.updateNote(noteData);
+  }
+
+  /**
+   * Delete note
+   */
+  deleteNote(id: number): boolean {
+    this.ensureInitialized();
+    return this.noteService!.deleteNote(id);
+  }
+
+  /**
+   * Search notes
+   */
+  searchNotes(searchTerm: string): Note[] {
+    this.ensureInitialized();
+    return this.noteService!.searchNotes(searchTerm);
+  }
+
+  /**
+   * Get notes statistics
+   */
+  getNotesStatistics(): {
+    totalNotes: number;
+    averageNotesPerPatient: number;
+  } {
+    this.ensureInitialized();
+    return this.noteService!.getNotesStatistics();
+  }
+
+  // ==================== Utility Methods ====================
+
+  /**
+   * Get the underlying database instance
+   * Use sparingly - prefer using service methods
+   */
+  getDatabase(): Database.Database {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    return this.db;
+  }
+
+  /**
+   * Close database connection
+   */
+  close(): void {
+    if (this.db) {
+      this.db.close();
+      this.db = null;
+      this.driver = null;
+      this.patientRepository = null;
+      this.noteRepository = null;
+      this.patientService = null;
+      this.noteService = null;
+      this.initialized = false;
+      console.log('Database closed successfully');
+    }
+  }
+
+  /**
+   * Ensure database is initialized before operations
+   */
+  private ensureInitialized(): void {
+    if (!this.initialized || !this.patientService || !this.noteService) {
+      throw new Error('Database service not initialized. Call initialize() first.');
+    }
+  }
+}

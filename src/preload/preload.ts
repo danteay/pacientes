@@ -26,8 +26,8 @@ contextBridge.exposeInMainWorld('api', {
 
     delete: (id: number): Promise<ApiResponse> => ipcRenderer.invoke('patient:delete', id),
 
-    search: (searchTerm: string): Promise<ApiResponse<Patient[]>> =>
-      ipcRenderer.invoke('patient:search', searchTerm),
+    search: (searchTerm: string, status?: string): Promise<ApiResponse<Patient[]>> =>
+      ipcRenderer.invoke('patient:search', searchTerm, status),
   },
 
   note: {

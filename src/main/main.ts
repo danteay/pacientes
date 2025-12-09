@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
-import { DatabaseService } from './database/database';
+import { DatabaseService } from './database/database-service';
 import { PatientCreateInput, PatientUpdateInput } from '../types/patient';
 import { NoteCreateInput, NoteUpdateInput } from '../types/note';
 import { BackupService, ImportProgress } from './services/backup';
@@ -23,12 +23,11 @@ function createWindow(): void {
   // Load from Vite dev server in development, or built files in production
   if (process.env.NODE_ENV === 'development') {
     mainWindow.loadURL('http://localhost:5173');
+    // Open DevTools only in development mode
+    mainWindow.webContents.openDevTools();
   } else {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
-
-  // Open DevTools - always open for debugging
-  mainWindow.webContents.openDevTools();
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -94,9 +93,9 @@ function setupIpcHandlers(): void {
   });
 
   // Search patients
-  ipcMain.handle('patient:search', async (_event, searchTerm: string) => {
+  ipcMain.handle('patient:search', async (_event, searchTerm: string, status?: string) => {
     try {
-      return { success: true, data: dbService.searchPatients(searchTerm) };
+      return { success: true, data: dbService.searchPatients(searchTerm, status as any) };
     } catch (error) {
       return { success: false, error: (error as Error).message };
     }

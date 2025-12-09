@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import NoteForm from '../../components/NoteForm/NoteForm';
-import type { Note } from '../../App';
+import type { Note } from '../../../types/note';
 
 interface NoteEditorProps {
   patientId?: string;

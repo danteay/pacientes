@@ -4,7 +4,7 @@ import { EditorState, ContentState, convertToRaw } from 'draft-js';
 import draftToHtml from 'draftjs-to-html';
 import htmlToDraft from 'html-to-draftjs';
 import 'react-draft-wysiwyg/dist/react-draft-wysiwyg.css';
-import type { Note } from '../../App';
+import type { Note } from '../../../types/note';
 import './styles.scss';
 
 interface NoteFormProps {
