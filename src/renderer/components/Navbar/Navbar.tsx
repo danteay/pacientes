@@ -29,14 +29,12 @@ class Navbar extends Component<{}, NavbarState> {
   }
 
   componentDidMount() {
-    // @ts-expect-error - window.api is defined in preload
-    window.api.backup.onImportProgress((progress: ImportProgress) => {
-      this.setState({ importProgress: progress });
+    window.api.backup.onImportProgress((progress: unknown) => {
+      this.setState({ importProgress: progress as ImportProgress });
     });
   }
 
   componentWillUnmount() {
-    // @ts-expect-error - window.api is defined in preload
     window.api.backup.removeImportProgressListener();
   }
 
@@ -64,11 +62,10 @@ class Navbar extends Component<{}, NavbarState> {
     });
 
     try {
-      // @ts-expect-error - window.api is defined in preload
       const result = await window.api.backup.import();
 
-      if (result.success) {
-        console.log('Import successful:', result.stats);
+      if (result.success && result.data) {
+        console.log('Import successful:', result.data);
         // Keep modal open to show completion
       } else {
         console.error('Import failed:', result.error);
@@ -86,7 +83,6 @@ class Navbar extends Component<{}, NavbarState> {
     this.setState({ isActionsDropdownActive: false });
 
     try {
-      // @ts-expect-error - window.api is defined in preload
       const result = await window.api.backup.export();
 
       if (result.success) {

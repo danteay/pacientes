@@ -5,7 +5,8 @@ import { LoadingSpinner } from '../../components/atoms/LoadingSpinner/LoadingSpi
 import { useNotification } from '../../context/NotificationContext';
 import { ipcClient } from '../../api';
 import { unwrapApiResponse } from '../../api/types';
-import type { Patient, Note } from '../../../types/patient';
+import type { Patient } from '../../../types/patient';
+import type { Note } from '../../../types/note';
 
 /**
  * Patient Details Page (Refactored)

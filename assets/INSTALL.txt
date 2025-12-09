@@ -1,0 +1,72 @@
+═══════════════════════════════════════════════════════════════
+                    PACIENTES - INSTALLATION GUIDE
+═══════════════════════════════════════════════════════════════
+
+Thank you for downloading Pacientes!
+
+QUICK INSTALLATION:
+────────────────────────────────────────────────────────────────
+
+1. Drag Pacientes.app to your Applications folder
+2. Open Applications in Finder (⌘ + Shift + A)
+3. RIGHT-CLICK (or Control + click) on Pacientes.app
+4. Select "Open" from the menu
+5. Click "Open" in the security dialog
+6. Done! You can now use Pacientes normally.
+
+📝 NOTE: You only need to right-click the FIRST time you open it.
+        After that, you can open it normally.
+
+WHY THIS STEP IS NEEDED:
+────────────────────────────────────────────────────────────────
+
+Pacientes is not signed with an Apple Developer certificate.
+This is normal for independent software and does NOT mean the
+app is dangerous or malicious.
+
+macOS Gatekeeper requires this extra step to protect users from
+unverified software.
+
+ALTERNATIVE METHOD (For Advanced Users):
+────────────────────────────────────────────────────────────────
+
+Open Terminal and run:
+    xattr -cr /Applications/Pacientes.app
+
+Then open Pacientes normally.
+
+TROUBLESHOOTING:
+────────────────────────────────────────────────────────────────
+
+⚠️  MOST COMMON: "Pacientes is damaged and can't be opened"
+
+THIS IS A FALSE WARNING! The app is NOT damaged.
+
+SOLUTION: Open Terminal and run this command:
+    xattr -cr /Applications/Pacientes.app
+
+How to open Terminal:
+    Applications → Utilities → Terminal
+    (or press ⌘ + Space, type "Terminal")
+
+After running the command, open Pacientes normally.
+
+────────────────────────────────────────────────────────────────
+
+Problem: "Cannot be opened because developer cannot be verified"
+Solution: This is expected. Use the right-click → Open method.
+
+SYSTEM REQUIREMENTS:
+────────────────────────────────────────────────────────────────
+
+• macOS 11.0 (Big Sur) or later
+• Apple Silicon (M1/M2/M3) or Intel processor
+• 200 MB free disk space
+
+SUPPORT:
+────────────────────────────────────────────────────────────────
+
+For issues or questions, please visit:
+https://github.com/danteay/pacientes/issues
+
+═══════════════════════════════════════════════════════════════

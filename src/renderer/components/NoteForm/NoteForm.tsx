@@ -76,7 +76,7 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
         content,
       };
 
-      const result = note
+      const result = note && note.id
         ? await window.api.note.update({ id: note.id, ...noteData })
         : await window.api.note.create(noteData);
 

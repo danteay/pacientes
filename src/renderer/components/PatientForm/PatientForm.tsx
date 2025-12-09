@@ -64,7 +64,7 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
     e.preventDefault();
 
     try {
-      const result = this.props.patient
+      const result = this.props.patient && this.props.patient.id
         ? await window.api.patient.update({ id: this.props.patient.id, ...this.state.formData })
         : await window.api.patient.create(this.state.formData as Patient);
 

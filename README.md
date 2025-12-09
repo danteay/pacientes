@@ -87,12 +87,14 @@ npm run build
 # Run the production build
 npm start
 
-# Create distributable packages
+# Create distributable packages (DMG for macOS, DEB/RPM for Linux, Squirrel for Windows)
 npm run make
 
-# Package for current platform
+# Package for current platform (without creating installer)
 npm run package
 ```
+
+**Note**: The build creates a DMG installer for macOS (`out/make/Pacientes.dmg`). The DMG is unsigned by default. For distribution without security warnings, see [CODE_SIGNING.md](./CODE_SIGNING.md) for code signing instructions.
 
 ### Testing
 
