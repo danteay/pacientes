@@ -1,0 +1,88 @@
+// Navbar styling
+.navbar {
+  background: linear-gradient(135deg, var(--rose) 0%, var(--rose-dark) 100%);
+
+  &.is-primary {
+    .navbar-brand {
+      .navbar-item {
+        color: white;
+        font-size: 1.25rem;
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+          color: white;
+        }
+      }
+
+      .navbar-burger {
+        color: white;
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+        }
+      }
+    }
+
+    .navbar-menu {
+      background: linear-gradient(135deg, var(--rose) 0%, var(--rose-dark) 100%);
+
+      .navbar-item {
+        color: white;
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.1);
+          color: white;
+        }
+
+        &.is-active {
+          background-color: rgba(255, 255, 255, 0.2);
+          color: white;
+        }
+
+        &.has-dropdown {
+          .navbar-link {
+            color: white;
+            background-color: transparent;
+
+            &:hover {
+              background-color: rgba(255, 255, 255, 0.1);
+              color: white;
+            }
+
+            &::after {
+              border-color: white;
+            }
+          }
+
+          &.is-active {
+            .navbar-link {
+              background-color: rgba(255, 255, 255, 0.1);
+            }
+          }
+
+          .navbar-dropdown {
+            background: linear-gradient(
+              to bottom,
+              var(--bulma-scheme-main-ter) 0%,
+              var(--bulma-scheme-main-bis) 100%
+            );
+            border: 0;
+            padding: 0;
+            box-shadow: 0 4px 8px var(--bulma-shadow-color);
+
+            .navbar-item {
+              color: var(--dark-brown);
+              font-weight: 500;
+              background: var(--bulma-scheme-main-ter);
+
+              &:hover {
+                background: linear-gradient(135deg, var(--rose-light) 0%, var(--rose) 100%);
+                color: white;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

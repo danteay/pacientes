@@ -50,23 +50,6 @@ class PatientNotes extends Component<PatientNotesProps, PatientNotesState> {
     }
   };
 
-  handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this note?')) {
-      return;
-    }
-
-    try {
-      const result = await window.api.note.delete(id);
-      if (result.success) {
-        this.loadNotes();
-      } else {
-        alert('Failed to delete note: ' + result.error);
-      }
-    } catch (error) {
-      console.error('Error deleting note:', error);
-      alert('Failed to delete note');
-    }
-  };
 
   formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString();
@@ -188,13 +171,6 @@ class PatientNotes extends Component<PatientNotesProps, PatientNotesState> {
                             title="Edit note"
                           >
                             Edit
-                          </button>
-                          <button
-                            onClick={() => this.handleDelete(note.id!)}
-                            className="button is-small is-danger"
-                            title="Delete note"
-                          >
-                            Delete
                           </button>
                         </div>
                       </td>

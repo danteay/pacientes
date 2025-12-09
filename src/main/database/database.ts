@@ -106,6 +106,13 @@ export class DatabaseService {
     return this.appointments.delete(id);
   }
 
+  getDatabase(): Database.Database {
+    if (!this.db) {
+      throw new Error('Database not initialized');
+    }
+    return this.db;
+  }
+
   close(): void {
     if (this.db) {
       this.db.close();

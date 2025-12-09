@@ -1,11 +1,13 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import { DatabaseService } from './database/database';
 import { PatientCreateInput, PatientUpdateInput } from '../types/patient';
 import { NoteCreateInput, NoteUpdateInput } from '../types/note';
+import { BackupService, ImportProgress } from './services/backup';
 
 let mainWindow: BrowserWindow | null = null;
 let dbService: DatabaseService;
+let backupService: BackupService;
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -157,11 +159,57 @@ function setupIpcHandlers(): void {
       return { success: false, error: (error as Error).message };
     }
   });
+
+  // Export database
+  ipcMain.handle('backup:export', async () => {
+    try {
+      const result = await dialog.showSaveDialog(mainWindow!, {
+        title: 'Export Database',
+        defaultPath: `pacientes-backup-${new Date().toISOString().split('T')[0]}.json.gz`,
+        filters: [{ name: 'Compressed JSON', extensions: ['json.gz', 'gz'] }],
+        properties: ['createDirectory', 'showOverwriteConfirmation'],
+      });
+
+      if (result.canceled || !result.filePath) {
+        return { success: false, error: 'Export cancelled' };
+      }
+
+      return await backupService.exportDatabase(result.filePath);
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Import database
+  ipcMain.handle('backup:import', async () => {
+    try {
+      const result = await dialog.showOpenDialog(mainWindow!, {
+        title: 'Import Database',
+        filters: [
+          { name: 'Compressed JSON', extensions: ['json.gz', 'gz'] },
+          { name: 'All Files', extensions: ['*'] },
+        ],
+        properties: ['openFile'],
+      });
+
+      if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+        return { success: false, error: 'Import cancelled' };
+      }
+
+      return await backupService.importDatabase(result.filePaths[0], (progress: ImportProgress) => {
+        // Send progress updates to renderer
+        mainWindow?.webContents.send('backup:import-progress', progress);
+      });
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
 }
 
 app.on('ready', async () => {
   dbService = new DatabaseService();
   await dbService.initialize();
+  backupService = new BackupService(dbService.getDatabase());
   setupIpcHandlers();
   createWindow();
 });

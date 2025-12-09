@@ -51,23 +51,6 @@ class PatientList extends Component<PatientListProps, PatientListState> {
     this.loadPatients();
   };
 
-  handleDelete = async (id: number) => {
-    if (!confirm('Are you sure you want to delete this patient?')) {
-      return;
-    }
-
-    try {
-      const result = await window.api.patient.delete(id);
-      if (result.success) {
-        this.loadPatients();
-      } else {
-        alert('Failed to delete patient: ' + result.error);
-      }
-    } catch (error) {
-      console.error('Error deleting patient:', error);
-      alert('Failed to delete patient');
-    }
-  };
 
   handleSearchInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     this.setState({ searchTerm: e.target.value });
@@ -153,13 +136,6 @@ class PatientList extends Component<PatientListProps, PatientListState> {
                             title="Edit patient"
                           >
                             Edit
-                          </button>
-                          <button
-                            onClick={() => this.handleDelete(patient.id!)}
-                            className="button is-small is-danger"
-                            title="Delete patient"
-                          >
-                            Delete
                           </button>
                         </div>
                       </td>

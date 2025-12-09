@@ -1,6 +1,7 @@
 import { Umzug, JSONStorage, memoryStorage } from 'umzug';
 import Database from 'better-sqlite3';
 import * as path from 'path';
+import * as os from 'os';
 import * as migration001 from './001-create-main-tables';
 import * as migration002 from './002-add-first-appointment-date';
 
@@ -8,12 +9,18 @@ import * as migration002 from './002-add-first-appointment-date';
  * Creates and configures an Umzug instance for database migrations
  * @param db - better-sqlite3 database instance
  * @param useMemoryStorage - If true, uses in-memory storage (for testing)
+ * @param storagePath - Optional custom path for migration storage file
  * @returns Configured Umzug instance
  */
 export function createUmzug(
   db: Database.Database,
-  useMemoryStorage: boolean = false
+  useMemoryStorage: boolean = false,
+  storagePath?: string
 ): Umzug<Database.Database> {
+  // Use home directory for migration tracking by default
+  const defaultStoragePath = path.join(os.homedir(), '.pacientes_migrations.json');
+  const finalStoragePath = storagePath || defaultStoragePath;
+
   return new Umzug({
     migrations: [
       {
@@ -31,7 +38,7 @@ export function createUmzug(
     storage: useMemoryStorage
       ? memoryStorage()
       : new JSONStorage({
-          path: path.join(process.cwd(), '.umzug.json'),
+          path: finalStoragePath,
         }),
     logger: console,
   });
@@ -41,12 +48,14 @@ export function createUmzug(
  * Runs all pending migrations
  * @param db - better-sqlite3 database instance
  * @param useMemoryStorage - If true, uses in-memory storage (for testing)
+ * @param storagePath - Optional custom path for migration storage file
  */
 export async function runMigrations(
   db: Database.Database,
-  useMemoryStorage: boolean = false
+  useMemoryStorage: boolean = false,
+  storagePath?: string
 ): Promise<void> {
-  const umzug = createUmzug(db, useMemoryStorage);
+  const umzug = createUmzug(db, useMemoryStorage, storagePath);
 
   try {
     const pending = await umzug.pending();

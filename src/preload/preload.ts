@@ -44,4 +44,19 @@ contextBridge.exposeInMainWorld('api', {
 
     delete: (id: number): Promise<ApiResponse> => ipcRenderer.invoke('note:delete', id),
   },
+
+  backup: {
+    export: (): Promise<ApiResponse> => ipcRenderer.invoke('backup:export'),
+
+    import: (): Promise<ApiResponse<{ patients: number; notes: number }>> =>
+      ipcRenderer.invoke('backup:import'),
+
+    onImportProgress: (callback: (progress: unknown) => void) => {
+      ipcRenderer.on('backup:import-progress', (_event, progress) => callback(progress));
+    },
+
+    removeImportProgressListener: () => {
+      ipcRenderer.removeAllListeners('backup:import-progress');
+    },
+  },
 });

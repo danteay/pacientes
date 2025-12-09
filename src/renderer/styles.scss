@@ -82,15 +82,6 @@
   box-shadow: 0 1px 4px var(--bulma-shadow-color);
 }
 
-.hero {
-  background: linear-gradient(135deg, var(--rose) 0%, var(--rose-dark) 100%);
-
-  .title,
-  .subtitle {
-    color: white !important;
-  }
-}
-
 .table {
   background: linear-gradient(to bottom, #faf3ed 0%, rgba(250, 243, 237, 0.5) 100%);
 
