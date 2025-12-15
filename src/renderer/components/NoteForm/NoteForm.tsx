@@ -19,6 +19,9 @@ interface NoteFormState {
   editorState: EditorState;
   isDirty: boolean;
   isSaving: boolean;
+  createdAt: string;
+  originalCreatedAt: string;
+  showConfirmModal: boolean;
 }
 
 class NoteForm extends Component<NoteFormProps, NoteFormState> {
@@ -29,6 +32,9 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
       editorState: EditorState.createEmpty(),
       isDirty: false,
       isSaving: false,
+      createdAt: '',
+      originalCreatedAt: '',
+      showConfirmModal: false,
     };
   }
 
@@ -52,6 +58,16 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
         const contentState = ContentState.createFromBlockArray(contentBlock.contentBlocks);
         this.setState({ editorState: EditorState.createWithContent(contentState) });
       }
+      // Load creation date if available
+      if (note.createdAt) {
+        // Extract date directly from ISO string to avoid timezone issues
+        // ISO format is YYYY-MM-DDTHH:MM:SS.sssZ, we just take the date part
+        const formattedDate = note.createdAt.split('T')[0];
+        this.setState({
+          createdAt: formattedDate,
+          originalCreatedAt: formattedDate,
+        });
+      }
     }
   };
 
@@ -61,6 +77,24 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
 
   handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     this.setState({ title: e.target.value, isDirty: true });
+  };
+
+  handleCreatedAtChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    this.setState({ createdAt: e.target.value, isDirty: true });
+  };
+
+  handleConfirmDateChange = async () => {
+    this.setState({ showConfirmModal: false });
+    await this.saveNote();
+  };
+
+  handleCancelDateChange = () => {
+    // Reset date to original and close modal
+    const { originalCreatedAt } = this.state;
+    this.setState({
+      createdAt: originalCreatedAt,
+      showConfirmModal: false,
+    });
   };
 
   componentWillUnmount() {
@@ -123,8 +157,25 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
   handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    const { note } = this.props;
+    const { createdAt, originalCreatedAt } = this.state;
+
+    // Check if creation date was modified
+    const isCreatedAtModified = note && createdAt && createdAt !== originalCreatedAt;
+
+    if (isCreatedAtModified) {
+      // Show confirmation modal
+      this.setState({ showConfirmModal: true });
+      return;
+    }
+
+    // Proceed with save
+    await this.saveNote();
+  };
+
+  saveNote = async () => {
     const { patientId, note, onSave } = this.props;
-    const { title, editorState } = this.state;
+    const { title, editorState, createdAt, originalCreatedAt } = this.state;
 
     // Convert Draft.js state to HTML
     const content = draftToHtml(convertToRaw(editorState.getCurrentContent()));
@@ -135,11 +186,21 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
     }
 
     try {
-      const noteData = {
+      // Include createdAt if it was modified
+      const isCreatedAtModified = note && createdAt && createdAt !== originalCreatedAt;
+
+      let noteData: { patientId: number; title: string; content: string; createdAt?: string } = {
         patientId,
         title,
         content,
       };
+
+      if (isCreatedAtModified) {
+        // Convert date string (YYYY-MM-DD) back to ISO format
+        // Use noon time to avoid timezone boundary issues
+        const isoString = `${createdAt}T12:00:00.000Z`;
+        noteData = { ...noteData, createdAt: isoString };
+      }
 
       const result =
         note && note.id
@@ -160,7 +221,7 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
 
   render() {
     const { note, onCancel } = this.props;
-    const { title, editorState, isDirty, isSaving } = this.state;
+    const { title, editorState, isDirty, isSaving, createdAt, showConfirmModal } = this.state;
 
     return (
       <section className="section">
@@ -230,6 +291,29 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
                 </div>
               </div>
 
+              {/* Creation Date Field - Only visible when editing */}
+              {note && note.id && (
+                <div className="field">
+                  <label className="label" htmlFor="note-created-at">
+                    Creation Date
+                  </label>
+                  <div className="control">
+                    <input
+                      className="input"
+                      type="date"
+                      id="note-created-at"
+                      name="createdAt"
+                      value={createdAt}
+                      onChange={this.handleCreatedAtChange}
+                    />
+                  </div>
+                  <p className="help">
+                    Changing the creation date will affect the chronological order of notes. Be
+                    careful when modifying this field.
+                  </p>
+                </div>
+              )}
+
               <div className="field is-grouped">
                 <div className="control">
                   <button type="submit" className="button is-primary">
@@ -244,6 +328,60 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
               </div>
             </div>
           </form>
+
+          {/* Confirmation Modal */}
+          <div className={`modal ${showConfirmModal ? 'is-active' : ''}`}>
+            <div className="modal-background" onClick={this.handleCancelDateChange}></div>
+            <div className="modal-card">
+              <header className="modal-card-head has-background-warning">
+                <p className="modal-card-title has-text-dark">
+                  <span className="icon">
+                    <i className="fas fa-exclamation-triangle"></i>
+                  </span>
+                  <span>Confirm Date Change</span>
+                </p>
+                <button
+                  className="delete"
+                  aria-label="close"
+                  onClick={this.handleCancelDateChange}
+                ></button>
+              </header>
+              <section className="modal-card-body">
+                <div className="content">
+                  <p className="has-text-weight-semibold has-text-dark">
+                    You are about to change the creation date of this note.
+                  </p>
+                  <p className="has-text-grey-dark">
+                    This will affect the chronological order in which notes appear. The note will be
+                    sorted according to its new creation date.
+                  </p>
+                  <div className="notification is-warning is-light">
+                    <p>
+                      <strong>Warning:</strong> This action cannot be easily undone. Are you sure
+                      you want to proceed?
+                    </p>
+                  </div>
+                </div>
+              </section>
+              <footer className="modal-card-foot" style={{ justifyContent: 'flex-end' }}>
+                <button
+                  className="button is-light"
+                  onClick={this.handleCancelDateChange}
+                  type="button"
+                  style={{ marginRight: '0.5rem' }}
+                >
+                  Cancel
+                </button>
+                <button
+                  className="button is-warning"
+                  onClick={this.handleConfirmDateChange}
+                  type="button"
+                >
+                  Yes, Change Date
+                </button>
+              </footer>
+            </div>
+          </div>
         </div>
       </section>
     );
