@@ -1,5 +1,7 @@
-import { DatabaseDriver } from '../driver/database-driver';
-import { BaseRepository } from './base-repository';
+import { inject, injectable } from 'tsyringe';
+import { DatabaseDriver } from '../../../database/driver/database-driver';
+import { BaseRepository } from '../../../database/repositories/base-repository';
+import { DATABASE_DRIVER } from '../../../infrastructure/ioc/container';
 import {
   Patient,
   PatientCreateInput,
@@ -8,7 +10,7 @@ import {
   Gender,
   SexualOrientation,
   PatientStatus,
-} from '../../../types/patient';
+} from '../../../../types/patient';
 
 /**
  * Patient Repository
@@ -18,12 +20,13 @@ import {
  * - Data mapping between database rows and Patient entities
  * - No business logic (that belongs in the service layer)
  */
+@injectable()
 export class PatientRepository extends BaseRepository<
   Patient,
   PatientCreateInput,
   PatientUpdateInput
 > {
-  constructor(driver: DatabaseDriver) {
+  constructor(@inject(DATABASE_DRIVER) driver: DatabaseDriver) {
     super(driver, 'patients');
   }
 

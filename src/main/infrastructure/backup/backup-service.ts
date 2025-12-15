@@ -2,10 +2,10 @@ import Database from 'better-sqlite3';
 import * as fs from 'fs';
 import * as zlib from 'zlib';
 import { promisify } from 'util';
-import { Patient } from '../../types/patient';
-import { Note } from '../../types/note';
-import { EmergencyContact } from '../../types/emergency-contact';
-import { LegalTutor } from '../../types/legal-tutor';
+import { Patient } from '../../../types/patient';
+import { Note } from '../../../types/note';
+import { EmergencyContact } from '../../../types/emergency-contact';
+import { LegalTutor } from '../../../types/legal-tutor';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);

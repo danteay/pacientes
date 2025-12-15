@@ -1,15 +1,20 @@
-import { LegalTutorRepository } from '../database/repositories/legal-tutor-repository';
-import { LegalTutor, LegalTutorCreateInput, LegalTutorUpdateInput } from '../../types/legal-tutor';
+import { injectable } from 'tsyringe';
+import { LegalTutorRepository } from '../repository/legal-tutor-repository';
+import {
+  LegalTutor,
+  LegalTutorCreateInput,
+  LegalTutorUpdateInput,
+} from '../../../../types/legal-tutor';
 
 /**
  * Legal Tutor Service
  *
  * Responsible for:
- * - Business logic related to legal tutors
- * - Validation rules
- * - Coordination between repositories
- * - Business-level error handling
+ * - Business logic related to legal tutors domain only
+ * - Validation rules for legal tutors
+ * - Can only import its own domain repository (LegalTutorRepository)
  */
+@injectable()
 export class LegalTutorService {
   private legalTutorRepository: LegalTutorRepository;
 

@@ -1,10 +1,12 @@
-import { DatabaseDriver } from '../driver/database-driver';
-import { BaseRepository } from './base-repository';
+import { inject, injectable } from 'tsyringe';
+import { DatabaseDriver } from '../../../database/driver/database-driver';
+import { BaseRepository } from '../../../database/repositories/base-repository';
+import { DATABASE_DRIVER } from '../../../infrastructure/ioc/container';
 import {
   LegalTutor,
   LegalTutorCreateInput,
   LegalTutorUpdateInput,
-} from '../../../types/legal-tutor';
+} from '../../../../types/legal-tutor';
 
 /**
  * Legal Tutor Repository
@@ -14,12 +16,13 @@ import {
  * - Data mapping between database rows and LegalTutor entities
  * - No business logic (that belongs in the service layer)
  */
+@injectable()
 export class LegalTutorRepository extends BaseRepository<
   LegalTutor,
   LegalTutorCreateInput,
   LegalTutorUpdateInput
 > {
-  constructor(driver: DatabaseDriver) {
+  constructor(@inject(DATABASE_DRIVER) driver: DatabaseDriver) {
     super(driver, 'legal_tutors');
   }
 

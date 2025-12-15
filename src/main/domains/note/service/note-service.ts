@@ -1,53 +1,39 @@
-import { NoteRepository } from '../database/repositories/note-repository';
-import { PatientRepository } from '../database/repositories/patient-repository';
-import { Note, NoteCreateInput, NoteUpdateInput } from '../../types/note';
+import { injectable } from 'tsyringe';
+import { NoteRepository } from '../repository/note-repository';
+import { Note, NoteCreateInput, NoteUpdateInput } from '../../../../types/note';
 
 /**
  * Note Service (Appointment Service)
  *
  * Responsible for:
- * - Business logic related to notes/appointments
- * - Validation rules
- * - Coordination between note and patient repositories
- * - Business-level error handling
+ * - Business logic related to notes/appointments domain only
+ * - Validation rules for notes
+ * - Can only import its own domain repository (NoteRepository)
+ *
+ * Note: Cross-domain operations (like updating patient's first appointment date)
+ * should be handled in UseCases, not in this service.
  */
+@injectable()
 export class NoteService {
   private noteRepository: NoteRepository;
-  private patientRepository: PatientRepository;
 
-  constructor(noteRepository: NoteRepository, patientRepository: PatientRepository) {
+  constructor(noteRepository: NoteRepository) {
     this.noteRepository = noteRepository;
-    this.patientRepository = patientRepository;
   }
 
   /**
    * Create a new note with validation
-   * Business rule: Set patient's first appointment date if not set
    */
   createNote(noteData: NoteCreateInput): Note {
     // Validate note data
     this.validateNoteData(noteData);
 
-    // Business rule: Check if patient exists
-    const patient = this.patientRepository.findById(noteData.patientId);
-    if (!patient) {
-      throw new Error(`Patient with ID ${noteData.patientId} not found`);
-    }
-
     // Create the note
-    const createdNote = this.noteRepository.create({
+    return this.noteRepository.create({
       ...noteData,
       title: noteData.title.trim(),
       content: noteData.content.trim(),
     });
-
-    // Business rule: Set first appointment date if not already set
-    if (!patient.firstAppointmentDate) {
-      const today = new Date().toISOString().split('T')[0];
-      this.patientRepository.updateFirstAppointmentDate(noteData.patientId, today);
-    }
-
-    return createdNote;
   }
 
   /**
@@ -67,12 +53,6 @@ export class NoteService {
   getNotesByPatientId(patientId: number): Note[] {
     if (patientId <= 0) {
       throw new Error('Invalid patient ID');
-    }
-
-    // Business rule: Check if patient exists
-    const patient = this.patientRepository.findById(patientId);
-    if (!patient) {
-      throw new Error(`Patient with ID ${patientId} not found`);
     }
 
     return this.noteRepository.findByPatientId(patientId);
@@ -169,15 +149,13 @@ export class NoteService {
   /**
    * Get notes statistics
    */
-  getNotesStatistics(): {
+  getNotesStatistics(totalPatients: number): {
     totalNotes: number;
     averageNotesPerPatient: number;
   } {
     const allNotes = this.noteRepository.findAll();
-    const allPatients = this.patientRepository.findAll();
 
-    const averageNotesPerPatient =
-      allPatients.length > 0 ? allNotes.length / allPatients.length : 0;
+    const averageNotesPerPatient = totalPatients > 0 ? allNotes.length / totalPatients : 0;
 
     return {
       totalNotes: allNotes.length,

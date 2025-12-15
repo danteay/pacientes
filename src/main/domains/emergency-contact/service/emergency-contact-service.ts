@@ -1,19 +1,20 @@
-import { EmergencyContactRepository } from '../database/repositories/emergency-contact-repository';
+import { injectable } from 'tsyringe';
+import { EmergencyContactRepository } from '../repository/emergency-contact-repository';
 import {
   EmergencyContact,
   EmergencyContactCreateInput,
   EmergencyContactUpdateInput,
-} from '../../types/emergency-contact';
+} from '../../../../types/emergency-contact';
 
 /**
  * Emergency Contact Service
  *
  * Responsible for:
- * - Business logic related to emergency contacts
- * - Validation rules
- * - Coordination between repositories
- * - Business-level error handling
+ * - Business logic related to emergency contacts domain only
+ * - Validation rules for emergency contacts
+ * - Can only import its own domain repository (EmergencyContactRepository)
  */
+@injectable()
 export class EmergencyContactService {
   private emergencyContactRepository: EmergencyContactRepository;
 

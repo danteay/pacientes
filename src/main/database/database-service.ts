@@ -1,55 +1,46 @@
 import Database from 'better-sqlite3';
 import * as path from 'path';
 import * as os from 'os';
-import { DatabaseDriver } from './driver/database-driver';
-import { PatientRepository, NoteRepository, EmergencyContactRepository } from './repositories';
-import { LegalTutorRepository } from './repositories/legal-tutor-repository';
-import { PatientService } from '../services/patient-service';
-import { NoteService } from '../services/note-service';
-import { EmergencyContactService } from '../services/emergency-contact-service';
-import { LegalTutorService } from '../services/legal-tutor-service';
+import { configureContainer, getContainer } from '../infrastructure/ioc/container';
+import { PatientService } from '../domains/patient/service/patient-service';
+import { NoteService } from '../domains/note/service/note-service';
+import { EmergencyContactService } from '../domains/emergency-contact/service/emergency-contact-service';
+import { LegalTutorService } from '../domains/legal-tutor/service/legal-tutor-service';
+import { CreateNoteUseCase } from '../domains/note/usecases/create-note-usecase';
+import { GetNotesStatisticsUseCase } from '../domains/note/usecases/get-notes-statistics-usecase';
 import { runMigrations } from './migrations/umzug';
-import {
-  Patient,
-  PatientCreateInput,
-  PatientUpdateInput,
-  PatientStatus,
-} from '../../types/patient';
-import { Note, NoteCreateInput, NoteUpdateInput } from '../../types/note';
-import {
-  EmergencyContact,
-  EmergencyContactCreateInput,
-  EmergencyContactUpdateInput,
-} from '../../types/emergency-contact';
-import { LegalTutor, LegalTutorCreateInput, LegalTutorUpdateInput } from '../../types/legal-tutor';
 
 /**
- * Database Service
+ * Database Service (Service Factory with IoC)
  *
- * This is the main orchestrator that:
- * - Initializes the database connection
- * - Creates and manages the Driver, Repository, and Service layers
- * - Provides a unified interface for the main process
- * - Manages database lifecycle (initialization, migrations, closing)
+ * Responsibilities:
+ * - Initialize the database connection
+ * - Run database migrations
+ * - Configure IoC container with database instance
+ * - Provide access to domain services via getter methods (resolved from IoC container)
+ * - Manage database lifecycle (initialization, closing)
  *
- * Layer Architecture:
- * DatabaseService → Service Layer → Repository Layer → Driver Layer → Database
+ * This is NOT a facade - it doesn't expose domain operations.
+ * Instead, it's a factory that provides access to domain services resolved from the IoC container.
+ *
+ * Usage:
+ *   const patientService = dbService.getPatientService();
+ *   patientService.createPatient(data);
  */
 export class DatabaseService {
   private db: Database.Database | null = null;
   private dbPath: string;
   private initialized: boolean = false;
 
-  // Layers
-  private driver: DatabaseDriver | null = null;
-  private patientRepository: PatientRepository | null = null;
-  private noteRepository: NoteRepository | null = null;
-  private emergencyContactRepository: EmergencyContactRepository | null = null;
-  private legalTutorRepository: LegalTutorRepository | null = null;
+  // Services resolved from IoC container
   private patientService: PatientService | null = null;
   private noteService: NoteService | null = null;
   private emergencyContactService: EmergencyContactService | null = null;
   private legalTutorService: LegalTutorService | null = null;
+
+  // Use Cases resolved from IoC container
+  private createNoteUseCase: CreateNoteUseCase | null = null;
+  private getNotesStatisticsUseCase: GetNotesStatisticsUseCase | null = null;
 
   constructor() {
     // Use user's home directory for the database file
@@ -59,7 +50,7 @@ export class DatabaseService {
   }
 
   /**
-   * Initialize database and all layers
+   * Initialize database and all layers using IoC container
    */
   async initialize(): Promise<void> {
     if (this.initialized) return;
@@ -73,19 +64,23 @@ export class DatabaseService {
     // Run migrations
     await this.runMigrations();
 
-    // Initialize layers from bottom to top
-    this.driver = new DatabaseDriver(this.db);
-    this.patientRepository = new PatientRepository(this.driver);
-    this.noteRepository = new NoteRepository(this.driver);
-    this.emergencyContactRepository = new EmergencyContactRepository(this.driver);
-    this.legalTutorRepository = new LegalTutorRepository(this.driver);
-    this.patientService = new PatientService(this.patientRepository);
-    this.noteService = new NoteService(this.noteRepository, this.patientRepository);
-    this.emergencyContactService = new EmergencyContactService(this.emergencyContactRepository);
-    this.legalTutorService = new LegalTutorService(this.legalTutorRepository);
+    // Configure IoC container with database instance
+    console.log('Configuring IoC container...');
+    configureContainer(this.db);
+    const container = getContainer();
+
+    // Resolve services from IoC container
+    this.patientService = container.resolve(PatientService);
+    this.noteService = container.resolve(NoteService);
+    this.emergencyContactService = container.resolve(EmergencyContactService);
+    this.legalTutorService = container.resolve(LegalTutorService);
+
+    // Resolve use cases from IoC container
+    this.createNoteUseCase = container.resolve(CreateNoteUseCase);
+    this.getNotesStatisticsUseCase = container.resolve(GetNotesStatisticsUseCase);
 
     this.initialized = true;
-    console.log('Database initialized successfully with all layers');
+    console.log('Database initialized successfully with IoC container');
   }
 
   /**
@@ -99,243 +94,63 @@ export class DatabaseService {
     console.log('Database migrations completed');
   }
 
-  // ==================== Patient Operations ====================
+  // ==================== Service Getters ====================
 
   /**
-   * Create a new patient
+   * Get patient service
    */
-  createPatient(patientData: PatientCreateInput): Patient {
+  getPatientService(): PatientService {
     this.ensureInitialized();
-    return this.patientService!.createPatient(patientData);
+    return this.patientService!;
   }
 
   /**
-   * Get patient by ID
+   * Get note service
    */
-  getPatientById(id: number): Patient | undefined {
+  getNoteService(): NoteService {
     this.ensureInitialized();
-    return this.patientService!.getPatientById(id);
+    return this.noteService!;
   }
 
   /**
-   * Get all patients
+   * Get emergency contact service
    */
-  getAllPatients(): Patient[] {
+  getEmergencyContactService(): EmergencyContactService {
     this.ensureInitialized();
-    return this.patientService!.getAllPatients();
+    return this.emergencyContactService!;
   }
 
   /**
-   * Update patient
+   * Get legal tutor service
    */
-  updatePatient(patientData: PatientUpdateInput): Patient | undefined {
+  getLegalTutorService(): LegalTutorService {
     this.ensureInitialized();
-    return this.patientService!.updatePatient(patientData);
+    return this.legalTutorService!;
+  }
+
+  // ==================== Use Case Getters ====================
+
+  /**
+   * Get create note use case
+   */
+  getCreateNoteUseCase(): CreateNoteUseCase {
+    this.ensureInitialized();
+    return this.createNoteUseCase!;
   }
 
   /**
-   * Delete patient
+   * Get notes statistics use case
    */
-  deletePatient(id: number): boolean {
+  getGetNotesStatisticsUseCase(): GetNotesStatisticsUseCase {
     this.ensureInitialized();
-    return this.patientService!.deletePatient(id);
-  }
-
-  /**
-   * Search patients with optional status filter
-   */
-  searchPatients(searchTerm: string, status?: PatientStatus): Patient[] {
-    this.ensureInitialized();
-    return this.patientService!.searchPatients(searchTerm, status);
-  }
-
-  /**
-   * Get patient statistics
-   */
-  getPatientStatistics(): {
-    total: number;
-    withoutFirstAppointment: number;
-    averageAge: number;
-  } {
-    this.ensureInitialized();
-    return this.patientService!.getPatientStatistics();
-  }
-
-  // ==================== Note Operations ====================
-
-  /**
-   * Create a new note
-   * Automatically sets first appointment date if not set
-   */
-  createNote(noteData: NoteCreateInput): Note {
-    this.ensureInitialized();
-    return this.noteService!.createNote(noteData);
-  }
-
-  /**
-   * Get note by ID
-   */
-  getNoteById(id: number): Note | undefined {
-    this.ensureInitialized();
-    return this.noteService!.getNoteById(id);
-  }
-
-  /**
-   * Get all notes for a patient
-   */
-  getNotesByPatientId(patientId: number): Note[] {
-    this.ensureInitialized();
-    return this.noteService!.getNotesByPatientId(patientId);
-  }
-
-  /**
-   * Get all notes
-   */
-  getAllNotes(): Note[] {
-    this.ensureInitialized();
-    return this.noteService!.getAllNotes();
-  }
-
-  /**
-   * Update note
-   */
-  updateNote(noteData: NoteUpdateInput): Note | undefined {
-    this.ensureInitialized();
-    return this.noteService!.updateNote(noteData);
-  }
-
-  /**
-   * Delete note
-   */
-  deleteNote(id: number): boolean {
-    this.ensureInitialized();
-    return this.noteService!.deleteNote(id);
-  }
-
-  /**
-   * Search notes
-   */
-  searchNotes(searchTerm: string): Note[] {
-    this.ensureInitialized();
-    return this.noteService!.searchNotes(searchTerm);
-  }
-
-  /**
-   * Get notes statistics
-   */
-  getNotesStatistics(): {
-    totalNotes: number;
-    averageNotesPerPatient: number;
-  } {
-    this.ensureInitialized();
-    return this.noteService!.getNotesStatistics();
-  }
-
-  // ==================== Emergency Contact Operations ====================
-
-  /**
-   * Create a new emergency contact
-   */
-  createEmergencyContact(contactData: EmergencyContactCreateInput): EmergencyContact {
-    this.ensureInitialized();
-    return this.emergencyContactService!.createEmergencyContact(contactData);
-  }
-
-  /**
-   * Get emergency contact by ID
-   */
-  getEmergencyContactById(id: number): EmergencyContact | undefined {
-    this.ensureInitialized();
-    return this.emergencyContactService!.getEmergencyContactById(id);
-  }
-
-  /**
-   * Get all emergency contacts for a patient
-   */
-  getEmergencyContactsByPatientId(patientId: number): EmergencyContact[] {
-    this.ensureInitialized();
-    return this.emergencyContactService!.getEmergencyContactsByPatientId(patientId);
-  }
-
-  /**
-   * Update emergency contact
-   */
-  updateEmergencyContact(contactData: EmergencyContactUpdateInput): EmergencyContact {
-    this.ensureInitialized();
-    return this.emergencyContactService!.updateEmergencyContact(contactData);
-  }
-
-  /**
-   * Delete emergency contact
-   */
-  deleteEmergencyContact(id: number): boolean {
-    this.ensureInitialized();
-    return this.emergencyContactService!.deleteEmergencyContact(id);
-  }
-
-  /**
-   * Delete all emergency contacts for a patient
-   */
-  deleteEmergencyContactsByPatientId(patientId: number): boolean {
-    this.ensureInitialized();
-    return this.emergencyContactService!.deleteEmergencyContactsByPatientId(patientId);
-  }
-
-  // ==================== Legal Tutor Operations ====================
-
-  /**
-   * Create a new legal tutor
-   */
-  createLegalTutor(tutorData: LegalTutorCreateInput): LegalTutor {
-    this.ensureInitialized();
-    return this.legalTutorService!.createLegalTutor(tutorData);
-  }
-
-  /**
-   * Get legal tutor by ID
-   */
-  getLegalTutorById(id: number): LegalTutor | undefined {
-    this.ensureInitialized();
-    return this.legalTutorService!.getLegalTutorById(id);
-  }
-
-  /**
-   * Get all legal tutors for a patient
-   */
-  getLegalTutorsByPatientId(patientId: number): LegalTutor[] {
-    this.ensureInitialized();
-    return this.legalTutorService!.getLegalTutorsByPatientId(patientId);
-  }
-
-  /**
-   * Update legal tutor
-   */
-  updateLegalTutor(tutorData: LegalTutorUpdateInput): LegalTutor {
-    this.ensureInitialized();
-    return this.legalTutorService!.updateLegalTutor(tutorData);
-  }
-
-  /**
-   * Delete legal tutor
-   */
-  deleteLegalTutor(id: number): boolean {
-    this.ensureInitialized();
-    return this.legalTutorService!.deleteLegalTutor(id);
-  }
-
-  /**
-   * Delete all legal tutors for a patient
-   */
-  deleteLegalTutorsByPatientId(patientId: number): boolean {
-    this.ensureInitialized();
-    return this.legalTutorService!.deleteLegalTutorsByPatientId(patientId);
+    return this.getNotesStatisticsUseCase!;
   }
 
   // ==================== Utility Methods ====================
 
   /**
    * Get the underlying database instance
-   * Use sparingly - prefer using service methods
+   * Used by infrastructure services like BackupService
    */
   getDatabase(): Database.Database {
     if (!this.db) {
@@ -345,23 +160,25 @@ export class DatabaseService {
   }
 
   /**
-   * Close database connection
+   * Close database connection and clear IoC container
    */
   close(): void {
     if (this.db) {
       this.db.close();
       this.db = null;
-      this.driver = null;
-      this.patientRepository = null;
-      this.noteRepository = null;
-      this.emergencyContactRepository = null;
-      this.legalTutorRepository = null;
       this.patientService = null;
       this.noteService = null;
       this.emergencyContactService = null;
       this.legalTutorService = null;
+      this.createNoteUseCase = null;
+      this.getNotesStatisticsUseCase = null;
       this.initialized = false;
-      console.log('Database closed successfully');
+
+      // Clear IoC container instances
+      const container = getContainer();
+      container.clearInstances();
+
+      console.log('Database closed successfully and IoC container cleared');
     }
   }
 
@@ -374,7 +191,9 @@ export class DatabaseService {
       !this.patientService ||
       !this.noteService ||
       !this.emergencyContactService ||
-      !this.legalTutorService
+      !this.legalTutorService ||
+      !this.createNoteUseCase ||
+      !this.getNotesStatisticsUseCase
     ) {
       throw new Error('Database service not initialized. Call initialize() first.');
     }

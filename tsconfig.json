@@ -12,7 +12,9 @@
     "resolveJsonModule": true,
     "moduleResolution": "node",
     "types": ["node"],
-    "jsx": "react"
+    "jsx": "react",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "out", "**/*.test.ts", "**/*.test.tsx", "jest.setup.ts", "jest.config.js"]

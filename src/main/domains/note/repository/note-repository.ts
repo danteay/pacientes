@@ -1,6 +1,8 @@
-import { DatabaseDriver } from '../driver/database-driver';
-import { BaseRepository } from './base-repository';
-import { Note, NoteCreateInput, NoteUpdateInput } from '../../../types/note';
+import { inject, injectable } from 'tsyringe';
+import { DatabaseDriver } from '../../../database/driver/database-driver';
+import { BaseRepository } from '../../../database/repositories/base-repository';
+import { DATABASE_DRIVER } from '../../../infrastructure/ioc/container';
+import { Note, NoteCreateInput, NoteUpdateInput } from '../../../../types/note';
 
 /**
  * Note Repository (Appointments Repository)
@@ -10,8 +12,9 @@ import { Note, NoteCreateInput, NoteUpdateInput } from '../../../types/note';
  * - Data mapping between database rows and Note entities
  * - No business logic (that belongs in the service layer)
  */
+@injectable()
 export class NoteRepository extends BaseRepository<Note, NoteCreateInput, NoteUpdateInput> {
-  constructor(driver: DatabaseDriver) {
+  constructor(@inject(DATABASE_DRIVER) driver: DatabaseDriver) {
     super(driver, 'notes');
   }
 

@@ -1,10 +1,12 @@
-import { DatabaseDriver } from '../driver/database-driver';
-import { BaseRepository } from './base-repository';
+import { inject, injectable } from 'tsyringe';
+import { DatabaseDriver } from '../../../database/driver/database-driver';
+import { BaseRepository } from '../../../database/repositories/base-repository';
+import { DATABASE_DRIVER } from '../../../infrastructure/ioc/container';
 import {
   EmergencyContact,
   EmergencyContactCreateInput,
   EmergencyContactUpdateInput,
-} from '../../../types/emergency-contact';
+} from '../../../../types/emergency-contact';
 
 /**
  * Emergency Contact Repository
@@ -14,12 +16,13 @@ import {
  * - Data mapping between database rows and EmergencyContact entities
  * - No business logic (that belongs in the service layer)
  */
+@injectable()
 export class EmergencyContactRepository extends BaseRepository<
   EmergencyContact,
   EmergencyContactCreateInput,
   EmergencyContactUpdateInput
 > {
-  constructor(driver: DatabaseDriver) {
+  constructor(@inject(DATABASE_DRIVER) driver: DatabaseDriver) {
     super(driver, 'emergency_contacts');
   }
 

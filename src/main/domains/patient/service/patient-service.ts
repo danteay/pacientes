@@ -1,10 +1,11 @@
-import { PatientRepository } from '../database/repositories/patient-repository';
+import { injectable } from 'tsyringe';
+import { PatientRepository } from '../repository/patient-repository';
 import {
   Patient,
   PatientCreateInput,
   PatientUpdateInput,
   PatientStatus,
-} from '../../types/patient';
+} from '../../../../types/patient';
 
 /**
  * Patient Service
@@ -15,6 +16,7 @@ import {
  * - Coordination between multiple repositories
  * - Business-level error handling
  */
+@injectable()
 export class PatientService {
   private patientRepository: PatientRepository;
 

@@ -43,8 +43,10 @@
     "react-dom": "^19.2.1",
     "react-draft-wysiwyg": "^1.15.0",
     "react-router-dom": "^7.10.1",
+    "reflect-metadata": "^0.2.2",
     "sass": "^1.94.3",
     "sass-embedded": "^1.93.3",
+    "tsyringe": "^4.10.0",
     "umzug": "^3.8.2"
   },
   "devDependencies": {
