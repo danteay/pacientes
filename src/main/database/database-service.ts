@@ -6,7 +6,12 @@ import { PatientRepository, NoteRepository } from './repositories';
 import { PatientService } from '../services/patient-service';
 import { NoteService } from '../services/note-service';
 import { runMigrations } from './migrations/umzug';
-import { Patient, PatientCreateInput, PatientUpdateInput } from '../../types/patient';
+import {
+  Patient,
+  PatientCreateInput,
+  PatientUpdateInput,
+  PatientStatus,
+} from '../../types/patient';
 import { Note, NoteCreateInput, NoteUpdateInput } from '../../types/note';
 
 /**
@@ -122,9 +127,9 @@ export class DatabaseService {
   /**
    * Search patients with optional status filter
    */
-  searchPatients(searchTerm: string, status?: string): Patient[] {
+  searchPatients(searchTerm: string, status?: PatientStatus): Patient[] {
     this.ensureInitialized();
-    return this.patientService!.searchPatients(searchTerm, status as any);
+    return this.patientService!.searchPatients(searchTerm, status);
   }
 
   /**

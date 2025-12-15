@@ -12,7 +12,7 @@ describe('PatientRepository', () => {
       executeQuerySingle: jest.fn(),
       executeCommand: jest.fn(),
       executeTransaction: jest.fn(),
-    } as any;
+    } as jest.Mocked<DatabaseDriver>;
 
     repository = new PatientRepository(mockDriver);
   });
@@ -47,7 +47,10 @@ describe('PatientRepository', () => {
       expect(result?.id).toBe(1);
       expect(result?.name).toBe('John Doe');
       expect(result?.status).toBe(PatientStatus.ACTIVE);
-      expect(mockDriver.executeQuerySingle).toHaveBeenCalledWith('SELECT * FROM patients WHERE id = ?', [1]);
+      expect(mockDriver.executeQuerySingle).toHaveBeenCalledWith(
+        'SELECT * FROM patients WHERE id = ?',
+        [1]
+      );
     });
 
     it('should return undefined when patient not found', () => {
@@ -109,7 +112,9 @@ describe('PatientRepository', () => {
       expect(result).toHaveLength(2);
       expect(result[0].name).toBe('John Doe');
       expect(result[1].name).toBe('Jane Smith');
-      expect(mockDriver.executeQuery).toHaveBeenCalledWith('SELECT * FROM patients ORDER BY createdAt DESC, id DESC');
+      expect(mockDriver.executeQuery).toHaveBeenCalledWith(
+        'SELECT * FROM patients ORDER BY createdAt DESC, id DESC'
+      );
     });
 
     it('should return empty array when no patients exist', () => {
@@ -139,7 +144,12 @@ describe('PatientRepository', () => {
       };
 
       const mockCommandResult = { lastInsertRowid: 1, changes: 1 };
-      const mockCreatedPatient = { ...patientData, id: 1, createdAt: '2023-01-01', updatedAt: '2023-01-01' };
+      const mockCreatedPatient = {
+        ...patientData,
+        id: 1,
+        createdAt: '2023-01-01',
+        updatedAt: '2023-01-01',
+      };
 
       mockDriver.executeCommand.mockReturnValue(mockCommandResult);
       mockDriver.executeQuerySingle.mockReturnValue(mockCreatedPatient);
@@ -251,7 +261,10 @@ describe('PatientRepository', () => {
       const result = repository.delete(1);
 
       expect(result).toBe(true);
-      expect(mockDriver.executeCommand).toHaveBeenCalledWith('DELETE FROM patients WHERE id = ?', [1]);
+      expect(mockDriver.executeCommand).toHaveBeenCalledWith(
+        'DELETE FROM patients WHERE id = ?',
+        [1]
+      );
     });
 
     it('should return false if patient does not exist', () => {

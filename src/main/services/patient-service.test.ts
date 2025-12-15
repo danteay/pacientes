@@ -1,6 +1,12 @@
 import { PatientService } from './patient-service';
 import { PatientRepository } from '../database/repositories/patient-repository';
-import { Patient, PatientCreateInput, PatientStatus, Gender, MaritalStatus } from '../../types/patient';
+import {
+  Patient,
+  PatientCreateInput,
+  PatientStatus,
+  Gender,
+  MaritalStatus,
+} from '../../types/patient';
 
 describe('PatientService', () => {
   let service: PatientService;
@@ -36,7 +42,7 @@ describe('PatientService', () => {
       findByStatus: jest.fn(),
       updateFirstAppointmentDate: jest.fn(),
       findPatientsWithoutFirstAppointment: jest.fn(),
-    } as any;
+    } as jest.Mocked<PatientRepository>;
 
     service = new PatientService(mockRepository);
   });
@@ -142,15 +148,22 @@ describe('PatientService', () => {
     it('should throw error for negative children count', () => {
       const invalidData = { ...validPatientData, children: -1 };
 
-      expect(() => service.createPatient(invalidData)).toThrow('Number of children must be a positive number');
+      expect(() => service.createPatient(invalidData)).toThrow(
+        'Number of children must be a positive number'
+      );
     });
 
     it('should throw error for future birth date', () => {
       const futureDate = new Date();
       futureDate.setFullYear(futureDate.getFullYear() + 1);
-      const invalidData = { ...validPatientData, birthDate: futureDate.toISOString().split('T')[0] };
+      const invalidData = {
+        ...validPatientData,
+        birthDate: futureDate.toISOString().split('T')[0],
+      };
 
-      expect(() => service.createPatient(invalidData)).toThrow('Birth date cannot be in the future');
+      expect(() => service.createPatient(invalidData)).toThrow(
+        'Birth date cannot be in the future'
+      );
     });
 
     it('should throw error for invalid birth date format', () => {
@@ -163,7 +176,9 @@ describe('PatientService', () => {
       const longName = 'a'.repeat(256);
       const invalidData = { ...validPatientData, name: longName };
 
-      expect(() => service.createPatient(invalidData)).toThrow('Patient name must be less than 255 characters');
+      expect(() => service.createPatient(invalidData)).toThrow(
+        'Patient name must be less than 255 characters'
+      );
     });
   });
 
@@ -238,25 +253,33 @@ describe('PatientService', () => {
     it('should throw error when patient does not exist', () => {
       mockRepository.findById.mockReturnValue(undefined);
 
-      expect(() => service.updatePatient({ id: 999, name: 'Test' })).toThrow('Patient with ID 999 not found');
+      expect(() => service.updatePatient({ id: 999, name: 'Test' })).toThrow(
+        'Patient with ID 999 not found'
+      );
     });
 
     it('should throw error for invalid email format in update', () => {
       mockRepository.findById.mockReturnValue(mockPatient);
 
-      expect(() => service.updatePatient({ id: 1, email: 'invalid-email' })).toThrow('Invalid email format');
+      expect(() => service.updatePatient({ id: 1, email: 'invalid-email' })).toThrow(
+        'Invalid email format'
+      );
     });
 
     it('should throw error for negative age in update', () => {
       mockRepository.findById.mockReturnValue(mockPatient);
 
-      expect(() => service.updatePatient({ id: 1, age: -1 })).toThrow('Age must be a positive number');
+      expect(() => service.updatePatient({ id: 1, age: -1 })).toThrow(
+        'Age must be a positive number'
+      );
     });
 
     it('should throw error for negative children count in update', () => {
       mockRepository.findById.mockReturnValue(mockPatient);
 
-      expect(() => service.updatePatient({ id: 1, children: -1 })).toThrow('Number of children must be a positive number');
+      expect(() => service.updatePatient({ id: 1, children: -1 })).toThrow(
+        'Number of children must be a positive number'
+      );
     });
   });
 
@@ -372,7 +395,9 @@ describe('PatientService', () => {
     it('should throw error when patient not found', () => {
       mockRepository.findById.mockReturnValue(undefined);
 
-      expect(() => service.setFirstAppointmentDateIfNotSet(999)).toThrow('Patient with ID 999 not found');
+      expect(() => service.setFirstAppointmentDateIfNotSet(999)).toThrow(
+        'Patient with ID 999 not found'
+      );
     });
   });
 
@@ -385,7 +410,10 @@ describe('PatientService', () => {
       ];
 
       mockRepository.findAll.mockReturnValue(patients);
-      mockRepository.findPatientsWithoutFirstAppointment.mockReturnValue([patients[1], patients[2]]);
+      mockRepository.findPatientsWithoutFirstAppointment.mockReturnValue([
+        patients[1],
+        patients[2],
+      ]);
 
       const result = service.getPatientStatistics();
 

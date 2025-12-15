@@ -6,6 +6,7 @@ import {
   PatientUpdateInput,
   MaritalStatus,
   Gender,
+  SexualOrientation,
   PatientStatus,
 } from '../../../types/patient';
 
@@ -57,9 +58,9 @@ export class PatientRepository extends BaseRepository<
     const query = `
       INSERT INTO patients (
         name, age, email, phoneNumber, birthDate, maritalStatus,
-        gender, educationalLevel, profession, livesWith, children,
+        gender, sexualOrientation, educationalLevel, profession, livesWith, children,
         previousPsychologicalExperience, firstAppointmentDate, status
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     const params = [
@@ -70,6 +71,7 @@ export class PatientRepository extends BaseRepository<
       patientData.birthDate,
       patientData.maritalStatus,
       patientData.gender,
+      patientData.sexualOrientation,
       patientData.educationalLevel,
       patientData.profession,
       patientData.livesWith,
@@ -204,6 +206,8 @@ export class PatientRepository extends BaseRepository<
       birthDate: row.birthDate as string,
       maritalStatus: row.maritalStatus as MaritalStatus,
       gender: row.gender as Gender,
+      sexualOrientation:
+        (row.sexualOrientation as SexualOrientation) || SexualOrientation.PREFER_NOT_TO_SAY,
       educationalLevel: row.educationalLevel as string,
       profession: row.profession as string,
       livesWith: row.livesWith as string,

@@ -230,8 +230,8 @@ describe('PatientList Component', () => {
     );
 
     // Get all elements with status text and filter for badges (span elements)
-    const statusBadges = screen.getAllByText('Active').filter(el => el.tagName === 'SPAN');
-    const pausedBadges = screen.getAllByText('Paused').filter(el => el.tagName === 'SPAN');
+    const statusBadges = screen.getAllByText('Active').filter((el) => el.tagName === 'SPAN');
+    const pausedBadges = screen.getAllByText('Paused').filter((el) => el.tagName === 'SPAN');
 
     expect(statusBadges[0]).toHaveClass('tag', 'is-success');
     expect(pausedBadges[0]).toHaveClass('tag', 'is-warning');

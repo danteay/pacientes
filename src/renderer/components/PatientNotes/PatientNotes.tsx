@@ -1,5 +1,11 @@
 import React, { useEffect } from 'react';
-import { Patient, PatientStatus } from '../../../types/patient';
+import {
+  Patient,
+  PatientStatus,
+  genderToString,
+  sexualOrientationToString,
+  maritalStatusToString,
+} from '../../../types/patient';
 import { Note } from '../../../types/note';
 import { useNotes } from '../../hooks/useNotes';
 import { useNotification } from '../../context/NotificationContext';
@@ -125,10 +131,14 @@ export const PatientNotes: React.FC<PatientNotesProps> = ({
                 <strong>Phone:</strong> {patient.phoneNumber}
               </div>
               <div className="column is-one-third">
-                <strong>Gender:</strong> {patient.gender}
+                <strong>Gender:</strong> {genderToString(patient.gender)}
               </div>
               <div className="column is-one-third">
-                <strong>Marital Status:</strong> {patient.maritalStatus}
+                <strong>Sexual Orientation:</strong>{' '}
+                {sexualOrientationToString(patient.sexualOrientation)}
+              </div>
+              <div className="column is-one-third">
+                <strong>Marital Status:</strong> {maritalStatusToString(patient.maritalStatus)}
               </div>
               <div className="column is-one-third">
                 <strong>Children:</strong> {patient.children}

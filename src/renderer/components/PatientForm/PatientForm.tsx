@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import type { Patient } from '../../../types/patient';
-import { MaritalStatus, PatientStatus, Gender } from '../../../types/patient';
+import { MaritalStatus, PatientStatus, Gender, SexualOrientation } from '../../../types/patient';
 import './PatientForm.styles.scss';
 
 interface PatientFormProps {
@@ -25,6 +25,7 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
         birthDate: '',
         maritalStatus: MaritalStatus.NOT_SPECIFIED,
         gender: Gender.NOT_SPECIFIED,
+        sexualOrientation: SexualOrientation.PREFER_NOT_TO_SAY,
         educationalLevel: '',
         profession: '',
         livesWith: '',
@@ -64,9 +65,10 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
     e.preventDefault();
 
     try {
-      const result = this.props.patient && this.props.patient.id
-        ? await window.api.patient.update({ id: this.props.patient.id, ...this.state.formData })
-        : await window.api.patient.create(this.state.formData as Patient);
+      const result =
+        this.props.patient && this.props.patient.id
+          ? await window.api.patient.update({ id: this.props.patient.id, ...this.state.formData })
+          : await window.api.patient.create(this.state.formData as Patient);
 
       if (result.success) {
         this.props.onSave();
@@ -237,6 +239,33 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
               <div className="columns">
                 <div className="column">
                   <div className="field">
+                    <label className="label" htmlFor="sexualOrientation">
+                      Sexual Orientation *
+                    </label>
+                    <div className="control">
+                      <div className="select is-fullwidth">
+                        <select
+                          id="sexualOrientation"
+                          name="sexualOrientation"
+                          value={formData.sexualOrientation}
+                          onChange={this.handleChange}
+                          required
+                        >
+                          <option value="prefer_not_to_say">Prefer not to say</option>
+                          <option value="heterosexual">Heterosexual</option>
+                          <option value="homosexual">Homosexual</option>
+                          <option value="bisexual">Bisexual</option>
+                          <option value="pansexual">Pansexual</option>
+                          <option value="asexual">Asexual</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="column">
+                  <div className="field">
                     <label className="label" htmlFor="maritalStatus">
                       Marital Status *
                     </label>
@@ -260,7 +289,9 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
                     </div>
                   </div>
                 </div>
+              </div>
 
+              <div className="columns">
                 <div className="column">
                   <div className="field">
                     <label className="label" htmlFor="status">
@@ -283,9 +314,7 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
                     </div>
                   </div>
                 </div>
-              </div>
 
-              <div className="columns">
                 <div className="column">
                   <div className="field">
                     <label className="label" htmlFor="children">

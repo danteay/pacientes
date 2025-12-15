@@ -71,7 +71,11 @@ describe('Button Component', () => {
 
   it('should not call onClick when disabled', () => {
     const handleClick = jest.fn();
-    render(<Button onClick={handleClick} disabled>Disabled</Button>);
+    render(
+      <Button onClick={handleClick} disabled>
+        Disabled
+      </Button>
+    );
 
     const button = screen.getByRole('button');
     fireEvent.click(button);
@@ -116,13 +120,7 @@ describe('Button Component', () => {
 
   it('should combine multiple classes correctly', () => {
     render(
-      <Button
-        variant="primary"
-        size="large"
-        isFullWidth
-        isLoading
-        className="custom"
-      >
+      <Button variant="primary" size="large" isFullWidth isLoading className="custom">
         Multiple Classes
       </Button>
     );

@@ -61,7 +61,7 @@ describe('usePatients Hook', () => {
 
     it('should set loading state while fetching', async () => {
       (ipcClient.getAllPatients as jest.Mock).mockImplementation(
-        () => new Promise(resolve => setTimeout(() => resolve({ success: true, data: [] }), 100))
+        () => new Promise((resolve) => setTimeout(() => resolve({ success: true, data: [] }), 100))
       );
 
       const { result } = renderHook(() => usePatients());

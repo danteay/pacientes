@@ -1,7 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import * as path from 'path';
 import { DatabaseService } from './database/database-service';
-import { PatientCreateInput, PatientUpdateInput } from '../types/patient';
+import { PatientCreateInput, PatientUpdateInput, PatientStatus } from '../types/patient';
 import { NoteCreateInput, NoteUpdateInput } from '../types/note';
 import { BackupService, ImportProgress } from './services/backup';
 
@@ -93,9 +93,9 @@ function setupIpcHandlers(): void {
   });
 
   // Search patients
-  ipcMain.handle('patient:search', async (_event, searchTerm: string, status?: string) => {
+  ipcMain.handle('patient:search', async (_event, searchTerm: string, status?: PatientStatus) => {
     try {
-      return { success: true, data: dbService.searchPatients(searchTerm, status as any) };
+      return { success: true, data: dbService.searchPatients(searchTerm, status) };
     } catch (error) {
       return { success: false, error: (error as Error).message };
     }
