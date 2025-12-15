@@ -4,13 +4,15 @@ import * as zlib from 'zlib';
 import { promisify } from 'util';
 import { Patient } from '../../types/patient';
 import { Note } from '../../types/note';
+import { EmergencyContact } from '../../types/emergency-contact';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
 
-// Type for exported patient (without id, with notes array)
+// Type for exported patient (without id, with notes and emergency contacts arrays)
 type ExportedPatient = Omit<Patient, 'id'> & {
   notes: Array<Omit<Note, 'id'>>;
+  emergencyContacts: Array<Omit<EmergencyContact, 'id' | 'patientId'>>;
 };
 
 export interface ExportData {
@@ -46,7 +48,7 @@ export class BackupService {
       // Get all patients (excluding id)
       const patientsStmt = this.db.prepare(`
         SELECT name, age, email, phoneNumber, birthDate, maritalStatus, gender,
-               educationalLevel, profession, livesWith, children,
+               sexualOrientation, status, educationalLevel, profession, livesWith, children,
                previousPsychologicalExperience, firstAppointmentDate,
                createdAt, updatedAt
         FROM patients
@@ -74,10 +76,33 @@ export class BackupService {
         notesByEmail.get(email)!.push(noteWithoutEmail);
       }
 
-      // Add notes array to each patient
+      // Get all emergency contacts (excluding id and patientId)
+      const emergencyContactsStmt = this.db.prepare(`
+        SELECT ec.fullName, ec.phoneNumber, ec.relation, ec.email, ec.address,
+               ec.createdAt, ec.updatedAt, p.email as patientEmail
+        FROM emergency_contacts ec
+        JOIN patients p ON ec.patientId = p.id
+      `);
+      const emergencyContacts = emergencyContactsStmt.all() as Array<Record<string, unknown>>;
+
+      // Group emergency contacts by patient email
+      const contactsByEmail = new Map<string, Array<Record<string, unknown>>>();
+      for (const contact of emergencyContacts) {
+        const email = contact.patientEmail as string;
+        if (!contactsByEmail.has(email)) {
+          contactsByEmail.set(email, []);
+        }
+        // Remove patientEmail field from contact before adding
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { patientEmail, ...contactWithoutEmail } = contact;
+        contactsByEmail.get(email)!.push(contactWithoutEmail);
+      }
+
+      // Add notes and emergency contacts arrays to each patient
       const patientsWithNotes = patients.map((patient) => ({
         ...patient,
         notes: notesByEmail.get(patient.email as string) || [],
+        emergencyContacts: contactsByEmail.get(patient.email as string) || [],
       })) as ExportedPatient[];
 
       // Create export data structure
@@ -106,7 +131,11 @@ export class BackupService {
   async importDatabase(
     filePath: string,
     progressCallback?: (progress: ImportProgress) => void
-  ): Promise<{ success: boolean; error?: string; stats?: { patients: number; notes: number } }> {
+  ): Promise<{
+    success: boolean;
+    error?: string;
+    stats?: { patients: number; notes: number; emergencyContacts: number };
+  }> {
     try {
       progressCallback?.({
         stage: 'reading',
@@ -128,6 +157,7 @@ export class BackupService {
 
       let patientsImported = 0;
       let notesImported = 0;
+      let emergencyContactsImported = 0;
 
       // Stage 2: Importing patients
       for (let i = 0; i < data.patients.length; i++) {
@@ -135,6 +165,7 @@ export class BackupService {
         const stats = await this.insertPatient(patientData);
         patientsImported += stats.patientsInserted;
         notesImported += stats.notesInserted;
+        emergencyContactsImported += stats.emergencyContactsInserted;
 
         const percent = this.calculatePercentage(i + 1, totalPatients);
         progressCallback?.({
@@ -158,6 +189,7 @@ export class BackupService {
         stats: {
           patients: patientsImported,
           notes: notesImported,
+          emergencyContacts: emergencyContactsImported,
         },
       };
     } catch (error) {
@@ -179,15 +211,20 @@ export class BackupService {
     return 0;
   }
 
-  async insertPatient(
-    patientData: ExportedPatient
-  ): Promise<{ patientsInserted: number; notesInserted: number }> {
+  async insertPatient(patientData: ExportedPatient): Promise<{
+    patientsInserted: number;
+    notesInserted: number;
+    emergencyContactsInserted: number;
+  }> {
     let patientId = await this.patientExists(patientData.email);
     let patientsInserted = 0;
     let notesInserted = 0;
+    let emergencyContactsInserted = 0;
 
     if (patientId === 0) {
-      const patientFields = Object.keys(patientData).filter((key) => key !== 'notes');
+      const patientFields = Object.keys(patientData).filter(
+        (key) => key !== 'notes' && key !== 'emergencyContacts'
+      );
 
       const patientPlaceholders = patientFields.map(() => '?');
 
@@ -195,7 +232,7 @@ export class BackupService {
       const placeholdersStr = patientPlaceholders.join(', ');
 
       const values = patientFields.map(
-        (field) => patientData[field as keyof Omit<ExportedPatient, 'notes'>]
+        (field) => patientData[field as keyof Omit<ExportedPatient, 'notes' | 'emergencyContacts'>]
       );
 
       const stmt = this.db.prepare(`
@@ -218,7 +255,19 @@ export class BackupService {
       }
     }
 
-    return { patientsInserted, notesInserted };
+    // If there are emergency contacts, insert them
+    if (patientData.emergencyContacts && Array.isArray(patientData.emergencyContacts)) {
+      for (const contactData of patientData.emergencyContacts as Array<
+        Omit<EmergencyContact, 'id' | 'patientId'>
+      >) {
+        const inserted = await this.insertEmergencyContact(patientId, contactData);
+        if (inserted) {
+          emergencyContactsInserted++;
+        }
+      }
+    }
+
+    return { patientsInserted, notesInserted, emergencyContactsInserted };
   }
 
   async insertNote(patientId: number, noteData: Omit<Note, 'id'>): Promise<boolean> {
@@ -254,6 +303,55 @@ export class BackupService {
 
     const stmt = this.db.prepare(`
       INSERT INTO notes (${fieldsStr})
+      VALUES (${placeholdersStr})
+    `);
+
+    stmt.run(...values);
+    return true;
+  }
+
+  async insertEmergencyContact(
+    patientId: number,
+    contactData: Omit<EmergencyContact, 'id' | 'patientId'>
+  ): Promise<boolean> {
+    // Check for duplicate emergency contact (same patient, email, and phone number)
+    const checkDuplicateStmt = this.db.prepare(`
+      SELECT COUNT(*) as count
+      FROM emergency_contacts
+      WHERE patientId = ? AND email = ? AND phoneNumber = ?
+    `);
+
+    const duplicate = checkDuplicateStmt.get(
+      patientId,
+      contactData.email,
+      contactData.phoneNumber
+    ) as {
+      count: number;
+    };
+
+    if (duplicate.count > 0) {
+      // Emergency contact already exists, skip insertion
+      return false;
+    }
+
+    const contactFields = Object.keys(contactData);
+
+    // Always ensure patientId is first
+    const allFields = ['patientId', ...contactFields];
+    const contactPlaceholders = allFields.map(() => '?');
+
+    const fieldsStr = allFields.join(', ');
+    const placeholdersStr = contactPlaceholders.join(', ');
+
+    const values = [
+      patientId,
+      ...contactFields.map(
+        (field) => contactData[field as keyof Omit<EmergencyContact, 'id' | 'patientId'>]
+      ),
+    ];
+
+    const stmt = this.db.prepare(`
+      INSERT INTO emergency_contacts (${fieldsStr})
       VALUES (${placeholdersStr})
     `);
 

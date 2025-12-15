@@ -69,8 +69,9 @@ contextBridge.exposeInMainWorld('api', {
   backup: {
     export: (): Promise<ApiResponse> => ipcRenderer.invoke('backup:export'),
 
-    import: (): Promise<ApiResponse<{ patients: number; notes: number }>> =>
-      ipcRenderer.invoke('backup:import'),
+    import: (): Promise<
+      ApiResponse<{ patients: number; notes: number; emergencyContacts: number }>
+    > => ipcRenderer.invoke('backup:import'),
 
     onImportProgress: (callback: (progress: unknown) => void) => {
       ipcRenderer.on('backup:import-progress', (_event, progress) => callback(progress));

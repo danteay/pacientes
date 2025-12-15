@@ -48,7 +48,9 @@ declare global {
       };
       backup: {
         export: () => Promise<ApiResponse>;
-        import: () => Promise<ApiResponse<{ patients: number; notes: number }>>;
+        import: () => Promise<
+          ApiResponse<{ patients: number; notes: number; emergencyContacts: number }>
+        >;
         onImportProgress: (callback: (progress: unknown) => void) => void;
         removeImportProgressListener: () => void;
       };
@@ -142,7 +144,9 @@ export class IpcClient {
     return window.api.backup.export();
   }
 
-  async importBackup(): Promise<ApiResponse<{ patients: number; notes: number }>> {
+  async importBackup(): Promise<
+    ApiResponse<{ patients: number; notes: number; emergencyContacts: number }>
+  > {
     return window.api.backup.import();
   }
 
