@@ -1,0 +1,22 @@
+.emergency-contacts-table {
+  margin-top: 1rem;
+
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .table {
+    th {
+      white-space: nowrap;
+    }
+
+    td input {
+      width: 100%;
+      min-width: 150px;
+    }
+
+    td {
+      vertical-align: middle;
+    }
+  }
+}

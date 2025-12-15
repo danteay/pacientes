@@ -5,6 +5,27 @@
   margin-bottom: 2rem;
   padding-bottom: 1rem;
   border-bottom: 2px solid #dbdbdb;
+
+  .patient-info-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+}
+
+.tabs {
+  a {
+    &:hover {
+      color: #363636 !important;
+      border-bottom-color: #dbdbdb;
+    }
+  }
+
+  li.is-active a {
+    &:hover {
+      color: #3273dc !important;
+    }
+  }
 }
 
 .patient-info-content {

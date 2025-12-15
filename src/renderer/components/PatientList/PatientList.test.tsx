@@ -3,7 +3,13 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { PatientList } from './PatientList';
 import { usePatients } from '../../hooks/usePatients';
 import { useNotification } from '../../context/NotificationContext';
-import { Patient, PatientStatus, Gender, MaritalStatus, SexualOrientation } from '../../../types/patient';
+import {
+  Patient,
+  PatientStatus,
+  Gender,
+  MaritalStatus,
+  SexualOrientation,
+} from '../../../types/patient';
 
 // Mock hooks
 jest.mock('../../hooks/usePatients');

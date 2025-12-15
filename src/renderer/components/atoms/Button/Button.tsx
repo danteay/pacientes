@@ -22,6 +22,7 @@ export const Button: React.FC<ButtonProps> = ({
   className = '',
   children,
   disabled,
+  type = 'button',
   ...props
 }) => {
   const variantClass = `is-${variant}`;
@@ -34,7 +35,7 @@ export const Button: React.FC<ButtonProps> = ({
     .join(' ');
 
   return (
-    <button className={classes} disabled={disabled || isLoading} {...props}>
+    <button type={type} className={classes} disabled={disabled || isLoading} {...props}>
       {children}
     </button>
   );

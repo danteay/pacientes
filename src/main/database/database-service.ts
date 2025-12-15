@@ -2,9 +2,10 @@ import Database from 'better-sqlite3';
 import * as path from 'path';
 import * as os from 'os';
 import { DatabaseDriver } from './driver/database-driver';
-import { PatientRepository, NoteRepository } from './repositories';
+import { PatientRepository, NoteRepository, EmergencyContactRepository } from './repositories';
 import { PatientService } from '../services/patient-service';
 import { NoteService } from '../services/note-service';
+import { EmergencyContactService } from '../services/emergency-contact-service';
 import { runMigrations } from './migrations/umzug';
 import {
   Patient,
@@ -13,6 +14,11 @@ import {
   PatientStatus,
 } from '../../types/patient';
 import { Note, NoteCreateInput, NoteUpdateInput } from '../../types/note';
+import {
+  EmergencyContact,
+  EmergencyContactCreateInput,
+  EmergencyContactUpdateInput,
+} from '../../types/emergency-contact';
 
 /**
  * Database Service
@@ -35,8 +41,10 @@ export class DatabaseService {
   private driver: DatabaseDriver | null = null;
   private patientRepository: PatientRepository | null = null;
   private noteRepository: NoteRepository | null = null;
+  private emergencyContactRepository: EmergencyContactRepository | null = null;
   private patientService: PatientService | null = null;
   private noteService: NoteService | null = null;
+  private emergencyContactService: EmergencyContactService | null = null;
 
   constructor() {
     // Use user's home directory for the database file
@@ -64,8 +72,10 @@ export class DatabaseService {
     this.driver = new DatabaseDriver(this.db);
     this.patientRepository = new PatientRepository(this.driver);
     this.noteRepository = new NoteRepository(this.driver);
+    this.emergencyContactRepository = new EmergencyContactRepository(this.driver);
     this.patientService = new PatientService(this.patientRepository);
     this.noteService = new NoteService(this.noteRepository, this.patientRepository);
+    this.emergencyContactService = new EmergencyContactService(this.emergencyContactRepository);
 
     this.initialized = true;
     console.log('Database initialized successfully with all layers');
@@ -212,6 +222,56 @@ export class DatabaseService {
   } {
     this.ensureInitialized();
     return this.noteService!.getNotesStatistics();
+  }
+
+  // ==================== Emergency Contact Operations ====================
+
+  /**
+   * Create a new emergency contact
+   */
+  createEmergencyContact(contactData: EmergencyContactCreateInput): EmergencyContact {
+    this.ensureInitialized();
+    return this.emergencyContactService!.createEmergencyContact(contactData);
+  }
+
+  /**
+   * Get emergency contact by ID
+   */
+  getEmergencyContactById(id: number): EmergencyContact | undefined {
+    this.ensureInitialized();
+    return this.emergencyContactService!.getEmergencyContactById(id);
+  }
+
+  /**
+   * Get all emergency contacts for a patient
+   */
+  getEmergencyContactsByPatientId(patientId: number): EmergencyContact[] {
+    this.ensureInitialized();
+    return this.emergencyContactService!.getEmergencyContactsByPatientId(patientId);
+  }
+
+  /**
+   * Update emergency contact
+   */
+  updateEmergencyContact(contactData: EmergencyContactUpdateInput): EmergencyContact {
+    this.ensureInitialized();
+    return this.emergencyContactService!.updateEmergencyContact(contactData);
+  }
+
+  /**
+   * Delete emergency contact
+   */
+  deleteEmergencyContact(id: number): boolean {
+    this.ensureInitialized();
+    return this.emergencyContactService!.deleteEmergencyContact(id);
+  }
+
+  /**
+   * Delete all emergency contacts for a patient
+   */
+  deleteEmergencyContactsByPatientId(patientId: number): boolean {
+    this.ensureInitialized();
+    return this.emergencyContactService!.deleteEmergencyContactsByPatientId(patientId);
   }
 
   // ==================== Utility Methods ====================

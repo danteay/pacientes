@@ -1,6 +1,11 @@
 import { contextBridge, ipcRenderer } from 'electron';
 import { Patient, PatientCreateInput, PatientUpdateInput } from '../types/patient';
 import { Note, NoteCreateInput, NoteUpdateInput } from '../types/note';
+import {
+  EmergencyContact,
+  EmergencyContactCreateInput,
+  EmergencyContactUpdateInput,
+} from '../types/emergency-contact';
 
 // API response type
 interface ApiResponse<T = unknown> {
@@ -43,6 +48,22 @@ contextBridge.exposeInMainWorld('api', {
       ipcRenderer.invoke('note:update', noteData),
 
     delete: (id: number): Promise<ApiResponse> => ipcRenderer.invoke('note:delete', id),
+  },
+
+  emergencyContact: {
+    create: (contactData: EmergencyContactCreateInput): Promise<ApiResponse<EmergencyContact>> =>
+      ipcRenderer.invoke('emergencyContact:create', contactData),
+
+    getByPatientId: (patientId: number): Promise<ApiResponse<EmergencyContact[]>> =>
+      ipcRenderer.invoke('emergencyContact:getByPatientId', patientId),
+
+    getById: (id: number): Promise<ApiResponse<EmergencyContact>> =>
+      ipcRenderer.invoke('emergencyContact:getById', id),
+
+    update: (contactData: EmergencyContactUpdateInput): Promise<ApiResponse<EmergencyContact>> =>
+      ipcRenderer.invoke('emergencyContact:update', contactData),
+
+    delete: (id: number): Promise<ApiResponse> => ipcRenderer.invoke('emergencyContact:delete', id),
   },
 
   backup: {

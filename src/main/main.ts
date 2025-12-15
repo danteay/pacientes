@@ -3,6 +3,10 @@ import * as path from 'path';
 import { DatabaseService } from './database/database-service';
 import { PatientCreateInput, PatientUpdateInput, PatientStatus } from '../types/patient';
 import { NoteCreateInput, NoteUpdateInput } from '../types/note';
+import {
+  EmergencyContactCreateInput,
+  EmergencyContactUpdateInput,
+} from '../types/emergency-contact';
 import { BackupService, ImportProgress } from './services/backup';
 
 let mainWindow: BrowserWindow | null = null;
@@ -152,6 +156,69 @@ function setupIpcHandlers(): void {
       const success = dbService.deleteNote(id);
       if (!success) {
         return { success: false, error: 'Note not found' };
+      }
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Emergency Contact handlers
+  // Create emergency contact
+  ipcMain.handle(
+    'emergencyContact:create',
+    async (_event, contactData: EmergencyContactCreateInput) => {
+      try {
+        const contact = dbService.createEmergencyContact(contactData);
+        return { success: true, data: contact };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // Get emergency contacts by patient ID
+  ipcMain.handle('emergencyContact:getByPatientId', async (_event, patientId: number) => {
+    try {
+      const contacts = dbService.getEmergencyContactsByPatientId(patientId);
+      return { success: true, data: contacts };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Get emergency contact by ID
+  ipcMain.handle('emergencyContact:getById', async (_event, id: number) => {
+    try {
+      const contact = dbService.getEmergencyContactById(id);
+      if (!contact) {
+        return { success: false, error: 'Emergency contact not found' };
+      }
+      return { success: true, data: contact };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Update emergency contact
+  ipcMain.handle(
+    'emergencyContact:update',
+    async (_event, contactData: EmergencyContactUpdateInput) => {
+      try {
+        const contact = dbService.updateEmergencyContact(contactData);
+        return { success: true, data: contact };
+      } catch (error) {
+        return { success: false, error: (error as Error).message };
+      }
+    }
+  );
+
+  // Delete emergency contact
+  ipcMain.handle('emergencyContact:delete', async (_event, id: number) => {
+    try {
+      const success = dbService.deleteEmergencyContact(id);
+      if (!success) {
+        return { success: false, error: 'Emergency contact not found' };
       }
       return { success: true };
     } catch (error) {

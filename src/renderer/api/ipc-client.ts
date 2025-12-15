@@ -1,6 +1,11 @@
 import { ApiResponse } from './types';
 import { Patient, PatientCreateInput, PatientUpdateInput } from '../../types/patient';
 import { Note, NoteCreateInput, NoteUpdateInput } from '../../types/note';
+import {
+  EmergencyContact,
+  EmergencyContactCreateInput,
+  EmergencyContactUpdateInput,
+} from '../../types/emergency-contact';
 
 /**
  * IPC Client
@@ -28,6 +33,17 @@ declare global {
         getByPatientId: (patientId: number) => Promise<ApiResponse<Note[]>>;
         getById: (id: number) => Promise<ApiResponse<Note>>;
         update: (noteData: NoteUpdateInput) => Promise<ApiResponse<Note>>;
+        delete: (id: number) => Promise<ApiResponse>;
+      };
+      emergencyContact: {
+        create: (
+          contactData: EmergencyContactCreateInput
+        ) => Promise<ApiResponse<EmergencyContact>>;
+        getByPatientId: (patientId: number) => Promise<ApiResponse<EmergencyContact[]>>;
+        getById: (id: number) => Promise<ApiResponse<EmergencyContact>>;
+        update: (
+          contactData: EmergencyContactUpdateInput
+        ) => Promise<ApiResponse<EmergencyContact>>;
         delete: (id: number) => Promise<ApiResponse>;
       };
       backup: {
@@ -90,6 +106,34 @@ export class IpcClient {
 
   async deleteNote(id: number): Promise<ApiResponse> {
     return window.api.note.delete(id);
+  }
+
+  // ==================== Emergency Contact API ====================
+
+  async createEmergencyContact(
+    contactData: EmergencyContactCreateInput
+  ): Promise<ApiResponse<EmergencyContact>> {
+    return window.api.emergencyContact.create(contactData);
+  }
+
+  async getEmergencyContactsByPatientId(
+    patientId: number
+  ): Promise<ApiResponse<EmergencyContact[]>> {
+    return window.api.emergencyContact.getByPatientId(patientId);
+  }
+
+  async getEmergencyContactById(id: number): Promise<ApiResponse<EmergencyContact>> {
+    return window.api.emergencyContact.getById(id);
+  }
+
+  async updateEmergencyContact(
+    contactData: EmergencyContactUpdateInput
+  ): Promise<ApiResponse<EmergencyContact>> {
+    return window.api.emergencyContact.update(contactData);
+  }
+
+  async deleteEmergencyContact(id: number): Promise<ApiResponse> {
+    return window.api.emergencyContact.delete(id);
   }
 
   // ==================== Backup API ====================

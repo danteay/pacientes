@@ -1,6 +1,8 @@
 import React, { Component } from 'react';
 import type { Patient } from '../../../types/patient';
 import { MaritalStatus, PatientStatus, Gender, SexualOrientation } from '../../../types/patient';
+import type { EmergencyContact } from '../../../types/emergency-contact';
+import { EmergencyContactsTable } from '../EmergencyContactsTable/EmergencyContactsTable';
 import './PatientForm.styles.scss';
 
 interface PatientFormProps {
@@ -11,6 +13,8 @@ interface PatientFormProps {
 
 interface PatientFormState {
   formData: Partial<Patient>;
+  emergencyContacts: Partial<EmergencyContact>[];
+  isLoadingContacts: boolean;
 }
 
 class PatientForm extends Component<PatientFormProps, PatientFormState> {
@@ -34,20 +38,43 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
         firstAppointmentDate: '',
         status: PatientStatus.ACTIVE,
       },
+      emergencyContacts: [],
+      isLoadingContacts: false,
     };
   }
 
-  componentDidMount() {
+  async componentDidMount() {
     if (this.props.patient) {
       this.setState({ formData: this.props.patient });
+      await this.loadEmergencyContacts();
     }
   }
 
-  componentDidUpdate(prevProps: PatientFormProps) {
+  async componentDidUpdate(prevProps: PatientFormProps) {
     if (this.props.patient !== prevProps.patient && this.props.patient) {
       this.setState({ formData: this.props.patient });
+      await this.loadEmergencyContacts();
     }
   }
+
+  loadEmergencyContacts = async () => {
+    if (!this.props.patient?.id) {
+      this.setState({ emergencyContacts: [] });
+      return;
+    }
+
+    try {
+      this.setState({ isLoadingContacts: true });
+      const response = await window.api.emergencyContact.getByPatientId(this.props.patient.id);
+      if (response.success && response.data) {
+        this.setState({ emergencyContacts: response.data });
+      }
+    } catch (error) {
+      console.error('Error loading emergency contacts:', error);
+    } finally {
+      this.setState({ isLoadingContacts: false });
+    }
+  };
 
   handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
@@ -61,23 +88,88 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
     }));
   };
 
+  handleEmergencyContactsChange = (contacts: Partial<EmergencyContact>[]) => {
+    this.setState({ emergencyContacts: contacts });
+  };
+
   handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
+      // First, save the patient
       const result =
         this.props.patient && this.props.patient.id
           ? await window.api.patient.update({ id: this.props.patient.id, ...this.state.formData })
           : await window.api.patient.create(this.state.formData as Patient);
 
-      if (result.success) {
-        this.props.onSave();
-      } else {
+      if (!result.success) {
         alert('Failed to save patient: ' + result.error);
+        return;
       }
+
+      // Get the patient ID (either from update or create)
+      const patientId = result.data?.id;
+      if (!patientId) {
+        alert('Failed to get patient ID');
+        return;
+      }
+
+      // Save emergency contacts
+      await this.saveEmergencyContacts(patientId);
+
+      this.props.onSave();
     } catch (error) {
       console.error('Error saving patient:', error);
       alert('Failed to save patient');
+    }
+  };
+
+  saveEmergencyContacts = async (patientId: number) => {
+    try {
+      // Get existing contacts for this patient
+      const existingResponse = await window.api.emergencyContact.getByPatientId(patientId);
+      const existingContacts = existingResponse.success ? existingResponse.data || [] : [];
+
+      // Delete contacts that were removed (exist in DB but not in state)
+      const contactsToDelete = existingContacts.filter(
+        (existing) => !this.state.emergencyContacts.find((contact) => contact.id === existing.id)
+      );
+
+      for (const contact of contactsToDelete) {
+        if (contact.id) {
+          await window.api.emergencyContact.delete(contact.id);
+        }
+      }
+
+      // Create or update contacts
+      for (const contact of this.state.emergencyContacts) {
+        // Skip empty contacts
+        if (!contact.fullName || !contact.phoneNumber || !contact.email || !contact.relation) {
+          continue;
+        }
+
+        if (contact.id) {
+          // Update existing contact
+          await window.api.emergencyContact.update({
+            id: contact.id,
+            ...contact,
+            patientId,
+          });
+        } else {
+          // Create new contact
+          await window.api.emergencyContact.create({
+            ...contact,
+            patientId,
+            fullName: contact.fullName,
+            phoneNumber: contact.phoneNumber,
+            email: contact.email,
+            relation: contact.relation,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error saving emergency contacts:', error);
+      throw error;
     }
   };
 
@@ -427,6 +519,18 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
                     onChange={this.handleChange}
                   />
                 </div>
+              </div>
+
+              <div className="field">
+                <label className="label">Emergency Contacts</label>
+                <p className="help">
+                  Add emergency contacts for this patient. Changes will be saved when you save the
+                  patient.
+                </p>
+                <EmergencyContactsTable
+                  contacts={this.state.emergencyContacts}
+                  onChange={this.handleEmergencyContactsChange}
+                />
               </div>
 
               <div className="field is-grouped">
