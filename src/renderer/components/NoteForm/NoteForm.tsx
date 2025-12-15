@@ -17,6 +17,8 @@ interface NoteFormProps {
 interface NoteFormState {
   title: string;
   editorState: EditorState;
+  isDirty: boolean;
+  isSaving: boolean;
 }
 
 class NoteForm extends Component<NoteFormProps, NoteFormState> {
@@ -25,6 +27,8 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
     this.state = {
       title: '',
       editorState: EditorState.createEmpty(),
+      isDirty: false,
+      isSaving: false,
     };
   }
 
@@ -52,7 +56,68 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
   };
 
   onEditorStateChange = (editorState: EditorState) => {
-    this.setState({ editorState });
+    this.setState({ editorState, isDirty: true });
+  };
+
+  handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    this.setState({ title: e.target.value, isDirty: true });
+  };
+
+  componentWillUnmount() {
+    // Auto-save if there's unsaved content when navigating away
+    this.autoSaveNote();
+  }
+
+  autoSaveNote = async () => {
+    const { patientId, note } = this.props;
+    const { title, editorState, isDirty, isSaving } = this.state;
+
+    // Don't auto-save if already saving or no changes made
+    if (!isDirty || isSaving) {
+      return;
+    }
+
+    // Convert Draft.js state to HTML
+    const content = draftToHtml(convertToRaw(editorState.getCurrentContent()));
+
+    // Don't save if both title and content are empty
+    if (!title.trim() && (!content.trim() || content === '<p></p>\n')) {
+      return;
+    }
+
+    // Don't save if either title or content is missing (incomplete note)
+    if (!title.trim() || !content.trim() || content === '<p></p>\n') {
+      console.log('Auto-save skipped: incomplete note');
+      return;
+    }
+
+    this.setState({ isSaving: true });
+
+    try {
+      const noteData = {
+        patientId,
+        title,
+        content,
+      };
+
+      // Save or update the note
+      const result =
+        note && note.id
+          ? await window.api.note.update({ id: note.id, ...noteData })
+          : await window.api.note.create(noteData);
+
+      if (result.success) {
+        console.log('Note auto-saved successfully');
+      } else {
+        console.error('Auto-save failed:', result.error);
+      }
+    } catch (error) {
+      console.error('Error during auto-save:', error);
+    } finally {
+      // Note: setState may not complete if component is unmounted
+      // but that's okay since we're leaving the page anyway
+      this.setState({ isSaving: false });
+    }
   };
 
   handleSubmit = async (e: React.FormEvent) => {
@@ -82,6 +147,7 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
           : await window.api.note.create(noteData);
 
       if (result.success) {
+        this.setState({ isDirty: false });
         onSave();
       } else {
         alert('Failed to save note: ' + result.error);
@@ -94,7 +160,7 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
 
   render() {
     const { note, onCancel } = this.props;
-    const { title, editorState } = this.state;
+    const { title, editorState, isDirty, isSaving } = this.state;
 
     return (
       <section className="section">
@@ -112,7 +178,18 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
                 </button>
               </div>
               <div className="level-item">
-                <h2 className="title is-4">{note ? 'Edit Note' : 'Add New Note'}</h2>
+                <div style={{ textAlign: 'center' }}>
+                  <h2 className="title is-4">{note ? 'Edit Note' : 'Add New Note'}</h2>
+                  {isSaving && (
+                    <p className="help is-info">
+                      <span className="icon is-small">
+                        <i className="fas fa-spinner fa-pulse"></i>
+                      </span>
+                      <span>Saving...</span>
+                    </p>
+                  )}
+                  {isDirty && !isSaving && <p className="help is-warning">Unsaved changes</p>}
+                </div>
               </div>
             </div>
           </div>
@@ -132,7 +209,7 @@ class NoteForm extends Component<NoteFormProps, NoteFormState> {
                     required
                     placeholder="Enter note title..."
                     value={title}
-                    onChange={(e) => this.setState({ title: e.target.value })}
+                    onChange={this.handleTitleChange}
                   />
                 </div>
               </div>
