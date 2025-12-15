@@ -50,6 +50,7 @@ export enum PatientStatus {
   ACTIVE = 'active',
   PAUSED = 'paused',
   MEDICAL_DISCHARGE = 'medical_discharge',
+  ABANDONED = 'abandoned',
 }
 
 export interface PatientCreateInput extends Omit<Patient, 'id' | 'createdAt' | 'updatedAt'> {}
@@ -127,6 +128,8 @@ export function patientStatusToString(status: PatientStatus): string {
       return 'Paused';
     case PatientStatus.MEDICAL_DISCHARGE:
       return 'Medical Discharge';
+    case PatientStatus.ABANDONED:
+      return 'Abandoned';
     default:
       return status;
   }

@@ -63,6 +63,8 @@ export const PatientList: React.FC<PatientListProps> = ({
         return 'is-warning';
       case PatientStatus.MEDICAL_DISCHARGE:
         return 'is-info';
+      case PatientStatus.ABANDONED:
+        return 'is-danger';
       default:
         return 'is-light';
     }
@@ -76,6 +78,8 @@ export const PatientList: React.FC<PatientListProps> = ({
         return 'Paused';
       case PatientStatus.MEDICAL_DISCHARGE:
         return 'Medical Discharge';
+      case PatientStatus.ABANDONED:
+        return 'Abandoned';
       default:
         return status;
     }
@@ -112,6 +116,7 @@ export const PatientList: React.FC<PatientListProps> = ({
                       <option value={PatientStatus.ACTIVE}>Active</option>
                       <option value={PatientStatus.PAUSED}>Paused</option>
                       <option value={PatientStatus.MEDICAL_DISCHARGE}>Medical Discharge</option>
+                      <option value={PatientStatus.ABANDONED}>Abandoned</option>
                     </select>
                   </div>
                 </div>

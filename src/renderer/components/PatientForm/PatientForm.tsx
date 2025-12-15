@@ -309,6 +309,7 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
                           <option value="active">Active</option>
                           <option value="paused">Paused</option>
                           <option value="medical_discharge">Medical Discharge</option>
+                          <option value="abandoned">Abandoned</option>
                         </select>
                       </div>
                     </div>

@@ -62,6 +62,8 @@ export const PatientNotes: React.FC<PatientNotesProps> = ({
         return 'is-warning';
       case PatientStatus.MEDICAL_DISCHARGE:
         return 'is-info';
+      case PatientStatus.ABANDONED:
+        return 'is-danger';
       default:
         return 'is-light';
     }
@@ -75,6 +77,8 @@ export const PatientNotes: React.FC<PatientNotesProps> = ({
         return 'Paused';
       case PatientStatus.MEDICAL_DISCHARGE:
         return 'Medical Discharge';
+      case PatientStatus.ABANDONED:
+        return 'Abandoned';
       default:
         return status;
     }
