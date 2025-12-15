@@ -78,6 +78,42 @@ This will start the application in development mode with:
 - Live asset copying
 - Electron dev tools enabled
 
+#### Debug Mode
+
+Enable debug mode to get detailed console logging for troubleshooting:
+
+```bash
+# Development mode with debug logging
+npm run dev:debug
+
+# Production mode with debug logging
+npm run start:debug
+```
+
+When `DEBUG=true` is set, the application will:
+- Open DevTools automatically (even in production builds)
+- Log detailed information about:
+  - Backup import/export operations
+  - Patient data insertion
+  - Database operations
+  - IPC communication
+  - Progress updates
+
+All debug logs are prefixed with `[DEBUG]` for easy filtering.
+
+**Example debug output:**
+```
+[DEBUG] Debug mode enabled - DevTools opened
+[DEBUG] Starting backup import dialog
+[DEBUG] Importing from: /path/to/backup.json.gz
+[DEBUG] BackupService: Starting import from /path/to/backup.json.gz
+[DEBUG] BackupService: Export data loaded, version: 1.0
+[DEBUG] BackupService: Total patients to import: 5
+[DEBUG] BackupService: Importing patient 1/5: patient@email.com
+[DEBUG] BackupService: Patient import stats: { patientsInserted: 1, notesInserted: 3, emergencyContactsInserted: 2 }
+[DEBUG] BackupService: Import complete: { success: true, stats: { patients: 5, notes: 12, emergencyContacts: 8 } }
+```
+
 ### Building
 
 ```bash

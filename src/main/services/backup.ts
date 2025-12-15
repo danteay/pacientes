@@ -137,6 +137,10 @@ export class BackupService {
     stats?: { patients: number; notes: number; emergencyContacts: number };
   }> {
     try {
+      if (process.env.DEBUG === 'true') {
+        console.log('[DEBUG] BackupService: Starting import from', filePath);
+      }
+
       progressCallback?.({
         stage: 'reading',
         current: 0,
@@ -145,6 +149,11 @@ export class BackupService {
       });
       // Stage 1: Reading file
       const data = await this.getExportData(filePath);
+
+      if (process.env.DEBUG === 'true') {
+        console.log('[DEBUG] BackupService: Export data loaded, version:', data.version);
+        console.log('[DEBUG] BackupService: Total patients to import:', data.patients.length);
+      }
 
       const totalPatients = data.patients.length;
 
@@ -162,10 +171,29 @@ export class BackupService {
       // Stage 2: Importing patients
       for (let i = 0; i < data.patients.length; i++) {
         const patientData = data.patients[i];
-        const stats = await this.insertPatient(patientData);
-        patientsImported += stats.patientsInserted;
-        notesImported += stats.notesInserted;
-        emergencyContactsImported += stats.emergencyContactsInserted;
+
+        if (process.env.DEBUG === 'true') {
+          console.log(
+            `[DEBUG] BackupService: Importing patient ${i + 1}/${totalPatients}:`,
+            patientData.email
+          );
+        }
+
+        try {
+          const stats = await this.insertPatient(patientData);
+          patientsImported += stats.patientsInserted;
+          notesImported += stats.notesInserted;
+          emergencyContactsImported += stats.emergencyContactsInserted;
+
+          if (process.env.DEBUG === 'true') {
+            console.log(`[DEBUG] BackupService: Patient import stats:`, stats);
+          }
+        } catch (error) {
+          if (process.env.DEBUG === 'true') {
+            console.error(`[DEBUG] BackupService: Error importing patient ${i + 1}:`, error);
+          }
+          throw error;
+        }
 
         const percent = this.calculatePercentage(i + 1, totalPatients);
         progressCallback?.({
@@ -184,7 +212,7 @@ export class BackupService {
         message: 'Import complete!',
       });
 
-      return {
+      const result = {
         success: true,
         stats: {
           patients: patientsImported,
@@ -192,7 +220,16 @@ export class BackupService {
           emergencyContacts: emergencyContactsImported,
         },
       };
+
+      if (process.env.DEBUG === 'true') {
+        console.log('[DEBUG] BackupService: Import complete:', result);
+      }
+
+      return result;
     } catch (error) {
+      if (process.env.DEBUG === 'true') {
+        console.error('[DEBUG] BackupService: Import failed with error:', error);
+      }
       return {
         success: false,
         error: error instanceof Error ? error.message : 'Unknown error occurred',

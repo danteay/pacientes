@@ -64,12 +64,22 @@ class Navbar extends Component<{}, NavbarState> {
     try {
       const result = await window.api.backup.import();
 
-      if (result.success && result.data) {
+      // Debug logging
+      console.log('[DEBUG] Navbar: Import result received:', result);
+
+      if (result.success) {
         console.log('Import successful:', result.data);
         // Keep modal open to show completion
+        // Optionally show success message with stats
+        if (result.data) {
+          const { patients, notes, emergencyContacts } = result.data;
+          console.log(
+            `Imported ${patients} patients, ${notes} notes, ${emergencyContacts} emergency contacts`
+          );
+        }
       } else {
         console.error('Import failed:', result.error);
-        alert(`Import failed: ${result.error}`);
+        alert(`Import failed: ${result.error || 'Unknown error'}`);
         this.setState({ isImportModalActive: false });
       }
     } catch (error) {

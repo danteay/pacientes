@@ -33,6 +33,12 @@ function createWindow(): void {
     mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
   }
 
+  // Open DevTools if DEBUG environment variable is set
+  if (process.env.DEBUG === 'true') {
+    mainWindow.webContents.openDevTools();
+    console.log('[DEBUG] Debug mode enabled - DevTools opened');
+  }
+
   mainWindow.on('closed', () => {
     mainWindow = null;
   });
@@ -249,6 +255,10 @@ function setupIpcHandlers(): void {
   // Import database
   ipcMain.handle('backup:import', async () => {
     try {
+      if (process.env.DEBUG === 'true') {
+        console.log('[DEBUG] Starting backup import dialog');
+      }
+
       const result = await dialog.showOpenDialog(mainWindow!, {
         title: 'Import Database',
         filters: [
@@ -259,14 +269,41 @@ function setupIpcHandlers(): void {
       });
 
       if (result.canceled || !result.filePaths || result.filePaths.length === 0) {
+        if (process.env.DEBUG === 'true') {
+          console.log('[DEBUG] Import cancelled by user');
+        }
         return { success: false, error: 'Import cancelled' };
       }
 
-      return await backupService.importDatabase(result.filePaths[0], (progress: ImportProgress) => {
-        // Send progress updates to renderer
-        mainWindow?.webContents.send('backup:import-progress', progress);
-      });
+      if (process.env.DEBUG === 'true') {
+        console.log('[DEBUG] Importing from:', result.filePaths[0]);
+      }
+
+      const importResult = await backupService.importDatabase(
+        result.filePaths[0],
+        (progress: ImportProgress) => {
+          // Send progress updates to renderer
+          mainWindow?.webContents.send('backup:import-progress', progress);
+          if (process.env.DEBUG === 'true') {
+            console.log('[DEBUG] Import progress:', progress);
+          }
+        }
+      );
+
+      if (process.env.DEBUG === 'true') {
+        console.log('[DEBUG] Import result:', importResult);
+      }
+
+      // Map stats to data to match ApiResponse structure
+      if (importResult.success && importResult.stats) {
+        return { success: true, data: importResult.stats };
+      }
+
+      return importResult;
     } catch (error) {
+      if (process.env.DEBUG === 'true') {
+        console.error('[DEBUG] Import error:', error);
+      }
       return { success: false, error: (error as Error).message };
     }
   });

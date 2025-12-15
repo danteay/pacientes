@@ -5,7 +5,9 @@
   "main": "dist/main/main.js",
   "scripts": {
     "start": "npm run build && electron . --trace-warnings",
+    "start:debug": "npm run build && DEBUG=true electron . --trace-warnings",
     "dev": "concurrently \"npm run watch:main\" \"npm run dev:renderer\" \"wait-on dist/main/main.js && electron .\"",
+    "dev:debug": "concurrently \"npm run watch:main\" \"npm run dev:renderer\" \"wait-on dist/main/main.js && DEBUG=true electron .\"",
     "watch:main": "tsc -w -p tsconfig.json",
     "dev:renderer": "vite",
     "build:main": "tsc -p tsconfig.json",
