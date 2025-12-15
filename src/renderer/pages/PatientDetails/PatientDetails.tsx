@@ -63,6 +63,10 @@ const PatientDetails: React.FC = () => {
     navigate(`/patient/${patientId}/note/${note.id}`);
   };
 
+  const handleViewFullInfo = () => {
+    navigate(`/patient/${patientId}`);
+  };
+
   if (isLoading) {
     return (
       <section className="section">
@@ -92,6 +96,7 @@ const PatientDetails: React.FC = () => {
       onAddNote={handleAddNote}
       onEditNote={handleEditNote}
       onViewNote={handleViewNote}
+      onViewFullInfo={handleViewFullInfo}
     />
   );
 };

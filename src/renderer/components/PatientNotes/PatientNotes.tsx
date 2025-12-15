@@ -26,6 +26,7 @@ interface PatientNotesProps {
   onAddNote: () => void;
   onEditNote: (note: Note) => void;
   onViewNote: (note: Note) => void;
+  onViewFullInfo: () => void;
 }
 
 export const PatientNotes: React.FC<PatientNotesProps> = ({
@@ -34,6 +35,7 @@ export const PatientNotes: React.FC<PatientNotesProps> = ({
   onAddNote,
   onEditNote,
   onViewNote,
+  onViewFullInfo,
 }) => {
   const { notes, loading, error, loadNotesByPatientId } = useNotes();
   const { showError } = useNotification();
@@ -170,6 +172,11 @@ export const PatientNotes: React.FC<PatientNotesProps> = ({
                 {patient.previousPsychologicalExperience || 'None'}
               </div>
             </div>
+          </div>
+          <div className="has-text-right" style={{ marginTop: '1rem' }}>
+            <Button variant="primary" onClick={onViewFullInfo} size="small">
+              View Full Information
+            </Button>
           </div>
         </div>
 

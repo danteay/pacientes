@@ -10,8 +10,8 @@ const Home: React.FC = () => {
     navigate('/patient/new');
   };
 
-  const handleEditPatient = (patient: Patient) => {
-    navigate(`/patient/edit/${patient.id}`);
+  const handleViewPatient = (patient: Patient) => {
+    navigate(`/patient/${patient.id}`);
   };
 
   const handleViewNotes = (patient: Patient) => {
@@ -21,7 +21,7 @@ const Home: React.FC = () => {
   return (
     <PatientList
       onAddPatient={handleAddPatient}
-      onEditPatient={handleEditPatient}
+      onViewPatient={handleViewPatient}
       onViewNotes={handleViewNotes}
     />
   );

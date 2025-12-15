@@ -16,13 +16,13 @@ import './PatientList.styles.scss';
 
 interface PatientListProps {
   onAddPatient: () => void;
-  onEditPatient: (patient: Patient) => void;
+  onViewPatient: (patient: Patient) => void;
   onViewNotes: (patient: Patient) => void;
 }
 
 export const PatientList: React.FC<PatientListProps> = ({
   onAddPatient,
-  onEditPatient,
+  onViewPatient,
   onViewNotes,
 }) => {
   const { patients, loading, error, loadPatients, searchPatients } = usePatients();
@@ -186,20 +186,20 @@ export const PatientList: React.FC<PatientListProps> = ({
                     <td>
                       <div className="buttons">
                         <Button
+                          variant="primary"
+                          size="small"
+                          onClick={() => onViewPatient(patient)}
+                          title="View patient information"
+                        >
+                          Info
+                        </Button>
+                        <Button
                           variant="info"
                           size="small"
                           onClick={() => onViewNotes(patient)}
                           title="View notes"
                         >
                           Notes
-                        </Button>
-                        <Button
-                          variant="warning"
-                          size="small"
-                          onClick={() => onEditPatient(patient)}
-                          title="Edit patient"
-                        >
-                          Edit
                         </Button>
                       </div>
                     </td>

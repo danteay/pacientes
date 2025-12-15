@@ -6,6 +6,7 @@ import { NotificationToast } from './components/molecules/NotificationToast/Noti
 import Navbar from './components/Navbar/Navbar';
 import Home from './pages/Home/Home';
 import EditPatient from './pages/EditPatient/EditPatient';
+import PatientInfo from './pages/PatientInfo/PatientInfo';
 import PatientDetails from './pages/PatientDetails/PatientDetails';
 import NoteEditor from './pages/NoteEditor/NoteEditor';
 import NoteDetails from './pages/NoteDetails/NoteDetails';
@@ -35,6 +36,7 @@ const AppContent: React.FC = () => {
             <Route path="/" element={<Home />} />
             <Route path="/patient/new" element={<EditPatient />} />
             <Route path="/patient/edit/:patientId" element={<EditPatient />} />
+            <Route path="/patient/:patientId" element={<PatientInfo />} />
             <Route path="/patient/:patientId/notes" element={<PatientDetails />} />
             <Route path="/patient/:patientId/note/new" element={<NoteEditor />} />
             <Route path="/patient/:patientId/note/edit/:noteId" element={<NoteEditor />} />

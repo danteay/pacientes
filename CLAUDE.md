@@ -275,3 +275,5 @@ Configure makers in `forge.config.js` for platform-specific build options.
 - to memorize
 - to memorize
 - to memorize
+- to memorize
+- to memorize

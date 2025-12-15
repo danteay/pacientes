@@ -3,7 +3,7 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { PatientList } from './PatientList';
 import { usePatients } from '../../hooks/usePatients';
 import { useNotification } from '../../context/NotificationContext';
-import { Patient, PatientStatus, Gender, MaritalStatus } from '../../../types/patient';
+import { Patient, PatientStatus, Gender, MaritalStatus, SexualOrientation } from '../../../types/patient';
 
 // Mock hooks
 jest.mock('../../hooks/usePatients');
@@ -19,6 +19,7 @@ const mockPatients: Patient[] = [
     birthDate: '1993-01-01',
     maritalStatus: 'single' as MaritalStatus,
     gender: 'male' as Gender,
+    sexualOrientation: 'prefer_not_to_say' as SexualOrientation,
     educationalLevel: 'Bachelor',
     profession: 'Engineer',
     livesWith: 'Alone',
@@ -36,6 +37,7 @@ const mockPatients: Patient[] = [
     birthDate: '1995-05-15',
     maritalStatus: 'married' as MaritalStatus,
     gender: 'female' as Gender,
+    sexualOrientation: 'prefer_not_to_say' as SexualOrientation,
     educationalLevel: 'Master',
     profession: 'Doctor',
     livesWith: 'Spouse',
@@ -50,7 +52,7 @@ describe('PatientList Component', () => {
   const mockLoadPatients = jest.fn();
   const mockSearchPatients = jest.fn();
   const mockOnAddPatient = jest.fn();
-  const mockOnEditPatient = jest.fn();
+  const mockOnViewPatient = jest.fn();
   const mockOnViewNotes = jest.fn();
   const mockShowError = jest.fn();
 
@@ -74,7 +76,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -87,7 +89,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -107,7 +109,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -119,7 +121,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -133,7 +135,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -149,7 +151,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -162,7 +164,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -181,7 +183,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -194,7 +196,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -209,7 +211,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -224,7 +226,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -241,7 +243,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -252,19 +254,19 @@ describe('PatientList Component', () => {
     expect(mockOnViewNotes).toHaveBeenCalledWith(mockPatients[0]);
   });
 
-  it('should call onEditPatient when Edit button is clicked', () => {
+  it('should call onViewPatient when Info button is clicked', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
 
-    const editButtons = screen.getAllByRole('button', { name: /edit/i });
-    fireEvent.click(editButtons[0]);
+    const infoButtons = screen.getAllByRole('button', { name: /info/i });
+    fireEvent.click(infoButtons[0]);
 
-    expect(mockOnEditPatient).toHaveBeenCalledWith(mockPatients[0]);
+    expect(mockOnViewPatient).toHaveBeenCalledWith(mockPatients[0]);
   });
 
   it('should display empty state message when no patients', () => {
@@ -279,7 +281,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -299,7 +301,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -324,7 +326,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
@@ -336,7 +338,7 @@ describe('PatientList Component', () => {
     render(
       <PatientList
         onAddPatient={mockOnAddPatient}
-        onEditPatient={mockOnEditPatient}
+        onViewPatient={mockOnViewPatient}
         onViewNotes={mockOnViewNotes}
       />
     );
