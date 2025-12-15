@@ -6,6 +6,7 @@ import {
   EmergencyContactCreateInput,
   EmergencyContactUpdateInput,
 } from '../types/emergency-contact';
+import { LegalTutor, LegalTutorCreateInput, LegalTutorUpdateInput } from '../types/legal-tutor';
 
 // API response type
 interface ApiResponse<T = unknown> {
@@ -66,11 +67,32 @@ contextBridge.exposeInMainWorld('api', {
     delete: (id: number): Promise<ApiResponse> => ipcRenderer.invoke('emergencyContact:delete', id),
   },
 
+  legalTutor: {
+    create: (tutorData: LegalTutorCreateInput): Promise<ApiResponse<LegalTutor>> =>
+      ipcRenderer.invoke('legalTutor:create', tutorData),
+
+    getByPatientId: (patientId: number): Promise<ApiResponse<LegalTutor[]>> =>
+      ipcRenderer.invoke('legalTutor:getByPatientId', patientId),
+
+    getById: (id: number): Promise<ApiResponse<LegalTutor>> =>
+      ipcRenderer.invoke('legalTutor:getById', id),
+
+    update: (tutorData: LegalTutorUpdateInput): Promise<ApiResponse<LegalTutor>> =>
+      ipcRenderer.invoke('legalTutor:update', tutorData),
+
+    delete: (id: number): Promise<ApiResponse> => ipcRenderer.invoke('legalTutor:delete', id),
+  },
+
   backup: {
     export: (): Promise<ApiResponse> => ipcRenderer.invoke('backup:export'),
 
     import: (): Promise<
-      ApiResponse<{ patients: number; notes: number; emergencyContacts: number }>
+      ApiResponse<{
+        patients: number;
+        notes: number;
+        emergencyContacts: number;
+        legalTutors: number;
+      }>
     > => ipcRenderer.invoke('backup:import'),
 
     onImportProgress: (callback: (progress: unknown) => void) => {

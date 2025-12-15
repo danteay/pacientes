@@ -7,6 +7,7 @@ import {
   EmergencyContactCreateInput,
   EmergencyContactUpdateInput,
 } from '../types/emergency-contact';
+import { LegalTutorCreateInput, LegalTutorUpdateInput } from '../types/legal-tutor';
 import { BackupService, ImportProgress } from './services/backup';
 
 let mainWindow: BrowserWindow | null = null;
@@ -225,6 +226,63 @@ function setupIpcHandlers(): void {
       const success = dbService.deleteEmergencyContact(id);
       if (!success) {
         return { success: false, error: 'Emergency contact not found' };
+      }
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Legal Tutor handlers
+  // Create legal tutor
+  ipcMain.handle('legalTutor:create', async (_event, tutorData: LegalTutorCreateInput) => {
+    try {
+      const tutor = dbService.createLegalTutor(tutorData);
+      return { success: true, data: tutor };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Get legal tutors by patient ID
+  ipcMain.handle('legalTutor:getByPatientId', async (_event, patientId: number) => {
+    try {
+      const tutors = dbService.getLegalTutorsByPatientId(patientId);
+      return { success: true, data: tutors };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Get legal tutor by ID
+  ipcMain.handle('legalTutor:getById', async (_event, id: number) => {
+    try {
+      const tutor = dbService.getLegalTutorById(id);
+      if (!tutor) {
+        return { success: false, error: 'Legal tutor not found' };
+      }
+      return { success: true, data: tutor };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Update legal tutor
+  ipcMain.handle('legalTutor:update', async (_event, tutorData: LegalTutorUpdateInput) => {
+    try {
+      const tutor = dbService.updateLegalTutor(tutorData);
+      return { success: true, data: tutor };
+    } catch (error) {
+      return { success: false, error: (error as Error).message };
+    }
+  });
+
+  // Delete legal tutor
+  ipcMain.handle('legalTutor:delete', async (_event, id: number) => {
+    try {
+      const success = dbService.deleteLegalTutor(id);
+      if (!success) {
+        return { success: false, error: 'Legal tutor not found' };
       }
       return { success: true };
     } catch (error) {

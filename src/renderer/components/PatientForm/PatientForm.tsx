@@ -2,7 +2,9 @@ import React, { Component } from 'react';
 import type { Patient } from '../../../types/patient';
 import { MaritalStatus, PatientStatus, Gender, SexualOrientation } from '../../../types/patient';
 import type { EmergencyContact } from '../../../types/emergency-contact';
+import type { LegalTutor } from '../../../types/legal-tutor';
 import { EmergencyContactsTable } from '../EmergencyContactsTable/EmergencyContactsTable';
+import { LegalTutorsTable } from '../LegalTutorsTable/LegalTutorsTable';
 import './PatientForm.styles.scss';
 
 interface PatientFormProps {
@@ -14,7 +16,9 @@ interface PatientFormProps {
 interface PatientFormState {
   formData: Partial<Patient>;
   emergencyContacts: Partial<EmergencyContact>[];
+  legalTutors: Partial<LegalTutor>[];
   isLoadingContacts: boolean;
+  isLoadingTutors: boolean;
 }
 
 class PatientForm extends Component<PatientFormProps, PatientFormState> {
@@ -39,7 +43,9 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
         status: PatientStatus.ACTIVE,
       },
       emergencyContacts: [],
+      legalTutors: [],
       isLoadingContacts: false,
+      isLoadingTutors: false,
     };
   }
 
@@ -47,6 +53,7 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
     if (this.props.patient) {
       this.setState({ formData: this.props.patient });
       await this.loadEmergencyContacts();
+      await this.loadLegalTutors();
     }
   }
 
@@ -54,6 +61,7 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
     if (this.props.patient !== prevProps.patient && this.props.patient) {
       this.setState({ formData: this.props.patient });
       await this.loadEmergencyContacts();
+      await this.loadLegalTutors();
     }
   }
 
@@ -76,6 +84,25 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
     }
   };
 
+  loadLegalTutors = async () => {
+    if (!this.props.patient?.id) {
+      this.setState({ legalTutors: [] });
+      return;
+    }
+
+    try {
+      this.setState({ isLoadingTutors: true });
+      const response = await window.api.legalTutor.getByPatientId(this.props.patient.id);
+      if (response.success && response.data) {
+        this.setState({ legalTutors: response.data });
+      }
+    } catch (error) {
+      console.error('Error loading legal tutors:', error);
+    } finally {
+      this.setState({ isLoadingTutors: false });
+    }
+  };
+
   handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
@@ -90,6 +117,10 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
 
   handleEmergencyContactsChange = (contacts: Partial<EmergencyContact>[]) => {
     this.setState({ emergencyContacts: contacts });
+  };
+
+  handleLegalTutorsChange = (tutors: Partial<LegalTutor>[]) => {
+    this.setState({ legalTutors: tutors });
   };
 
   handleSubmit = async (e: React.FormEvent) => {
@@ -116,6 +147,9 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
 
       // Save emergency contacts
       await this.saveEmergencyContacts(patientId);
+
+      // Save legal tutors
+      await this.saveLegalTutors(patientId);
 
       this.props.onSave();
     } catch (error) {
@@ -169,6 +203,62 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
       }
     } catch (error) {
       console.error('Error saving emergency contacts:', error);
+      throw error;
+    }
+  };
+
+  saveLegalTutors = async (patientId: number) => {
+    try {
+      // Get existing tutors for this patient
+      const existingResponse = await window.api.legalTutor.getByPatientId(patientId);
+      const existingTutors = existingResponse.success ? existingResponse.data || [] : [];
+
+      // Delete tutors that were removed (exist in DB but not in state)
+      const tutorsToDelete = existingTutors.filter(
+        (existing) => !this.state.legalTutors.find((tutor) => tutor.id === existing.id)
+      );
+
+      for (const tutor of tutorsToDelete) {
+        if (tutor.id) {
+          await window.api.legalTutor.delete(tutor.id);
+        }
+      }
+
+      // Create or update tutors
+      for (const tutor of this.state.legalTutors) {
+        // Skip empty tutors - birthDate is now required
+        if (
+          !tutor.fullName ||
+          !tutor.phoneNumber ||
+          !tutor.email ||
+          !tutor.relation ||
+          !tutor.birthDate
+        ) {
+          continue;
+        }
+
+        if (tutor.id) {
+          // Update existing tutor
+          await window.api.legalTutor.update({
+            id: tutor.id,
+            ...tutor,
+            patientId,
+          });
+        } else {
+          // Create new tutor
+          await window.api.legalTutor.create({
+            ...tutor,
+            patientId,
+            fullName: tutor.fullName,
+            phoneNumber: tutor.phoneNumber,
+            email: tutor.email,
+            relation: tutor.relation,
+            birthDate: tutor.birthDate,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error saving legal tutors:', error);
       throw error;
     }
   };
@@ -530,6 +620,18 @@ class PatientForm extends Component<PatientFormProps, PatientFormState> {
                 <EmergencyContactsTable
                   contacts={this.state.emergencyContacts}
                   onChange={this.handleEmergencyContactsChange}
+                />
+              </div>
+
+              <div className="field">
+                <label className="label">Legal Tutors</label>
+                <p className="help">
+                  Add legal tutors for this patient. Changes will be saved when you save the
+                  patient.
+                </p>
+                <LegalTutorsTable
+                  tutors={this.state.legalTutors}
+                  onChange={this.handleLegalTutorsChange}
                 />
               </div>
 

@@ -5,14 +5,16 @@ import { promisify } from 'util';
 import { Patient } from '../../types/patient';
 import { Note } from '../../types/note';
 import { EmergencyContact } from '../../types/emergency-contact';
+import { LegalTutor } from '../../types/legal-tutor';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
 
-// Type for exported patient (without id, with notes and emergency contacts arrays)
+// Type for exported patient (without id, with notes, emergency contacts, and legal tutors arrays)
 type ExportedPatient = Omit<Patient, 'id'> & {
   notes: Array<Omit<Note, 'id'>>;
   emergencyContacts: Array<Omit<EmergencyContact, 'id' | 'patientId'>>;
+  legalTutors: Array<Omit<LegalTutor, 'id' | 'patientId'>>;
 };
 
 export interface ExportData {
@@ -98,11 +100,34 @@ export class BackupService {
         contactsByEmail.get(email)!.push(contactWithoutEmail);
       }
 
-      // Add notes and emergency contacts arrays to each patient
+      // Get all legal tutors (excluding id and patientId)
+      const legalTutorsStmt = this.db.prepare(`
+        SELECT lt.fullName, lt.phoneNumber, lt.relation, lt.email, lt.birthDate, lt.address,
+               lt.createdAt, lt.updatedAt, p.email as patientEmail
+        FROM legal_tutors lt
+        JOIN patients p ON lt.patientId = p.id
+      `);
+      const legalTutors = legalTutorsStmt.all() as Array<Record<string, unknown>>;
+
+      // Group legal tutors by patient email
+      const tutorsByEmail = new Map<string, Array<Record<string, unknown>>>();
+      for (const tutor of legalTutors) {
+        const email = tutor.patientEmail as string;
+        if (!tutorsByEmail.has(email)) {
+          tutorsByEmail.set(email, []);
+        }
+        // Remove patientEmail field from tutor before adding
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { patientEmail, ...tutorWithoutEmail } = tutor;
+        tutorsByEmail.get(email)!.push(tutorWithoutEmail);
+      }
+
+      // Add notes, emergency contacts, and legal tutors arrays to each patient
       const patientsWithNotes = patients.map((patient) => ({
         ...patient,
         notes: notesByEmail.get(patient.email as string) || [],
         emergencyContacts: contactsByEmail.get(patient.email as string) || [],
+        legalTutors: tutorsByEmail.get(patient.email as string) || [],
       })) as ExportedPatient[];
 
       // Create export data structure
@@ -134,7 +159,7 @@ export class BackupService {
   ): Promise<{
     success: boolean;
     error?: string;
-    stats?: { patients: number; notes: number; emergencyContacts: number };
+    stats?: { patients: number; notes: number; emergencyContacts: number; legalTutors: number };
   }> {
     try {
       if (process.env.DEBUG === 'true') {
@@ -167,6 +192,7 @@ export class BackupService {
       let patientsImported = 0;
       let notesImported = 0;
       let emergencyContactsImported = 0;
+      let legalTutorsImported = 0;
 
       // Stage 2: Importing patients
       for (let i = 0; i < data.patients.length; i++) {
@@ -184,6 +210,7 @@ export class BackupService {
           patientsImported += stats.patientsInserted;
           notesImported += stats.notesInserted;
           emergencyContactsImported += stats.emergencyContactsInserted;
+          legalTutorsImported += stats.legalTutorsInserted;
 
           if (process.env.DEBUG === 'true') {
             console.log(`[DEBUG] BackupService: Patient import stats:`, stats);
@@ -218,6 +245,7 @@ export class BackupService {
           patients: patientsImported,
           notes: notesImported,
           emergencyContacts: emergencyContactsImported,
+          legalTutors: legalTutorsImported,
         },
       };
 
@@ -252,15 +280,17 @@ export class BackupService {
     patientsInserted: number;
     notesInserted: number;
     emergencyContactsInserted: number;
+    legalTutorsInserted: number;
   }> {
     let patientId = await this.patientExists(patientData.email);
     let patientsInserted = 0;
     let notesInserted = 0;
     let emergencyContactsInserted = 0;
+    let legalTutorsInserted = 0;
 
     if (patientId === 0) {
       const patientFields = Object.keys(patientData).filter(
-        (key) => key !== 'notes' && key !== 'emergencyContacts'
+        (key) => key !== 'notes' && key !== 'emergencyContacts' && key !== 'legalTutors'
       );
 
       const patientPlaceholders = patientFields.map(() => '?');
@@ -269,7 +299,10 @@ export class BackupService {
       const placeholdersStr = patientPlaceholders.join(', ');
 
       const values = patientFields.map(
-        (field) => patientData[field as keyof Omit<ExportedPatient, 'notes' | 'emergencyContacts'>]
+        (field) =>
+          patientData[
+            field as keyof Omit<ExportedPatient, 'notes' | 'emergencyContacts' | 'legalTutors'>
+          ]
       );
 
       const stmt = this.db.prepare(`
@@ -304,7 +337,19 @@ export class BackupService {
       }
     }
 
-    return { patientsInserted, notesInserted, emergencyContactsInserted };
+    // If there are legal tutors, insert them
+    if (patientData.legalTutors && Array.isArray(patientData.legalTutors)) {
+      for (const tutorData of patientData.legalTutors as Array<
+        Omit<LegalTutor, 'id' | 'patientId'>
+      >) {
+        const inserted = await this.insertLegalTutor(patientId, tutorData);
+        if (inserted) {
+          legalTutorsInserted++;
+        }
+      }
+    }
+
+    return { patientsInserted, notesInserted, emergencyContactsInserted, legalTutorsInserted };
   }
 
   async insertNote(patientId: number, noteData: Omit<Note, 'id'>): Promise<boolean> {
@@ -389,6 +434,49 @@ export class BackupService {
 
     const stmt = this.db.prepare(`
       INSERT INTO emergency_contacts (${fieldsStr})
+      VALUES (${placeholdersStr})
+    `);
+
+    stmt.run(...values);
+    return true;
+  }
+
+  async insertLegalTutor(
+    patientId: number,
+    tutorData: Omit<LegalTutor, 'id' | 'patientId'>
+  ): Promise<boolean> {
+    // Check for duplicate legal tutor (same patient, email, and phone number)
+    const checkDuplicateStmt = this.db.prepare(`
+      SELECT COUNT(*) as count
+      FROM legal_tutors
+      WHERE patientId = ? AND email = ? AND phoneNumber = ?
+    `);
+
+    const duplicate = checkDuplicateStmt.get(patientId, tutorData.email, tutorData.phoneNumber) as {
+      count: number;
+    };
+
+    if (duplicate.count > 0) {
+      // Legal tutor already exists, skip insertion
+      return false;
+    }
+
+    const tutorFields = Object.keys(tutorData);
+
+    // Always ensure patientId is first
+    const allFields = ['patientId', ...tutorFields];
+    const tutorPlaceholders = allFields.map(() => '?');
+
+    const fieldsStr = allFields.join(', ');
+    const placeholdersStr = tutorPlaceholders.join(', ');
+
+    const values = [
+      patientId,
+      ...tutorFields.map((field) => tutorData[field as keyof Omit<LegalTutor, 'id' | 'patientId'>]),
+    ];
+
+    const stmt = this.db.prepare(`
+      INSERT INTO legal_tutors (${fieldsStr})
       VALUES (${placeholdersStr})
     `);
 

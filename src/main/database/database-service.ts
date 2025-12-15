@@ -3,9 +3,11 @@ import * as path from 'path';
 import * as os from 'os';
 import { DatabaseDriver } from './driver/database-driver';
 import { PatientRepository, NoteRepository, EmergencyContactRepository } from './repositories';
+import { LegalTutorRepository } from './repositories/legal-tutor-repository';
 import { PatientService } from '../services/patient-service';
 import { NoteService } from '../services/note-service';
 import { EmergencyContactService } from '../services/emergency-contact-service';
+import { LegalTutorService } from '../services/legal-tutor-service';
 import { runMigrations } from './migrations/umzug';
 import {
   Patient,
@@ -19,6 +21,7 @@ import {
   EmergencyContactCreateInput,
   EmergencyContactUpdateInput,
 } from '../../types/emergency-contact';
+import { LegalTutor, LegalTutorCreateInput, LegalTutorUpdateInput } from '../../types/legal-tutor';
 
 /**
  * Database Service
@@ -42,9 +45,11 @@ export class DatabaseService {
   private patientRepository: PatientRepository | null = null;
   private noteRepository: NoteRepository | null = null;
   private emergencyContactRepository: EmergencyContactRepository | null = null;
+  private legalTutorRepository: LegalTutorRepository | null = null;
   private patientService: PatientService | null = null;
   private noteService: NoteService | null = null;
   private emergencyContactService: EmergencyContactService | null = null;
+  private legalTutorService: LegalTutorService | null = null;
 
   constructor() {
     // Use user's home directory for the database file
@@ -73,9 +78,11 @@ export class DatabaseService {
     this.patientRepository = new PatientRepository(this.driver);
     this.noteRepository = new NoteRepository(this.driver);
     this.emergencyContactRepository = new EmergencyContactRepository(this.driver);
+    this.legalTutorRepository = new LegalTutorRepository(this.driver);
     this.patientService = new PatientService(this.patientRepository);
     this.noteService = new NoteService(this.noteRepository, this.patientRepository);
     this.emergencyContactService = new EmergencyContactService(this.emergencyContactRepository);
+    this.legalTutorService = new LegalTutorService(this.legalTutorRepository);
 
     this.initialized = true;
     console.log('Database initialized successfully with all layers');
@@ -274,6 +281,56 @@ export class DatabaseService {
     return this.emergencyContactService!.deleteEmergencyContactsByPatientId(patientId);
   }
 
+  // ==================== Legal Tutor Operations ====================
+
+  /**
+   * Create a new legal tutor
+   */
+  createLegalTutor(tutorData: LegalTutorCreateInput): LegalTutor {
+    this.ensureInitialized();
+    return this.legalTutorService!.createLegalTutor(tutorData);
+  }
+
+  /**
+   * Get legal tutor by ID
+   */
+  getLegalTutorById(id: number): LegalTutor | undefined {
+    this.ensureInitialized();
+    return this.legalTutorService!.getLegalTutorById(id);
+  }
+
+  /**
+   * Get all legal tutors for a patient
+   */
+  getLegalTutorsByPatientId(patientId: number): LegalTutor[] {
+    this.ensureInitialized();
+    return this.legalTutorService!.getLegalTutorsByPatientId(patientId);
+  }
+
+  /**
+   * Update legal tutor
+   */
+  updateLegalTutor(tutorData: LegalTutorUpdateInput): LegalTutor {
+    this.ensureInitialized();
+    return this.legalTutorService!.updateLegalTutor(tutorData);
+  }
+
+  /**
+   * Delete legal tutor
+   */
+  deleteLegalTutor(id: number): boolean {
+    this.ensureInitialized();
+    return this.legalTutorService!.deleteLegalTutor(id);
+  }
+
+  /**
+   * Delete all legal tutors for a patient
+   */
+  deleteLegalTutorsByPatientId(patientId: number): boolean {
+    this.ensureInitialized();
+    return this.legalTutorService!.deleteLegalTutorsByPatientId(patientId);
+  }
+
   // ==================== Utility Methods ====================
 
   /**
@@ -297,8 +354,12 @@ export class DatabaseService {
       this.driver = null;
       this.patientRepository = null;
       this.noteRepository = null;
+      this.emergencyContactRepository = null;
+      this.legalTutorRepository = null;
       this.patientService = null;
       this.noteService = null;
+      this.emergencyContactService = null;
+      this.legalTutorService = null;
       this.initialized = false;
       console.log('Database closed successfully');
     }
@@ -308,7 +369,13 @@ export class DatabaseService {
    * Ensure database is initialized before operations
    */
   private ensureInitialized(): void {
-    if (!this.initialized || !this.patientService || !this.noteService) {
+    if (
+      !this.initialized ||
+      !this.patientService ||
+      !this.noteService ||
+      !this.emergencyContactService ||
+      !this.legalTutorService
+    ) {
       throw new Error('Database service not initialized. Call initialize() first.');
     }
   }

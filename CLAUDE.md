@@ -280,3 +280,4 @@ Configure makers in `forge.config.js` for platform-specific build options.
 - Add to memory. "When create some component style file, istead of using next notation <component-name>.style.[css|scss|sass], use just style.[css|scss|sass]"
 - to memorize
 - to memorize
+- to memorize

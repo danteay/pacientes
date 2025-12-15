@@ -7,6 +7,7 @@ import { ipcClient } from '../../api';
 import { unwrapApiResponse } from '../../api/types';
 import type { Patient } from '../../../types/patient';
 import type { EmergencyContact } from '../../../types/emergency-contact';
+import type { LegalTutor } from '../../../types/legal-tutor';
 import {
   genderToString,
   sexualOrientationToString,
@@ -15,6 +16,7 @@ import {
   PatientStatus,
 } from '../../../types/patient';
 import { EmergencyContactsTable } from '../../components/EmergencyContactsTable/EmergencyContactsTable';
+import { LegalTutorsTable } from '../../components/LegalTutorsTable/LegalTutorsTable';
 import './PatientInfo.styles.scss';
 
 /**
@@ -32,7 +34,8 @@ const PatientInfo: React.FC = () => {
   const [patient, setPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
-  const [activeTab, setActiveTab] = useState<'info' | 'contacts'>('info');
+  const [legalTutors, setLegalTutors] = useState<LegalTutor[]>([]);
+  const [activeTab, setActiveTab] = useState<'info' | 'contacts' | 'tutors'>('info');
 
   useEffect(() => {
     const loadData = async () => {
@@ -53,6 +56,12 @@ const PatientInfo: React.FC = () => {
         );
         if (contactsResponse.success && contactsResponse.data) {
           setEmergencyContacts(contactsResponse.data);
+        }
+
+        // Load legal tutors
+        const tutorsResponse = await window.api.legalTutor.getByPatientId(parseInt(patientId));
+        if (tutorsResponse.success && tutorsResponse.data) {
+          setLegalTutors(tutorsResponse.data);
         }
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : 'Failed to load patient';
@@ -167,6 +176,11 @@ const PatientInfo: React.FC = () => {
               <li className={activeTab === 'contacts' ? 'is-active' : ''}>
                 <a onClick={() => setActiveTab('contacts')}>
                   <span>Emergency Contacts</span>
+                </a>
+              </li>
+              <li className={activeTab === 'tutors' ? 'is-active' : ''}>
+                <a onClick={() => setActiveTab('tutors')}>
+                  <span>Legal Tutors</span>
                 </a>
               </li>
             </ul>
@@ -317,6 +331,13 @@ const PatientInfo: React.FC = () => {
           {activeTab === 'contacts' && (
             <div className="content" style={{ marginTop: '1rem' }}>
               <EmergencyContactsTable contacts={emergencyContacts} onChange={() => {}} readOnly />
+            </div>
+          )}
+
+          {/* Legal Tutors Tab */}
+          {activeTab === 'tutors' && (
+            <div className="content" style={{ marginTop: '1rem' }}>
+              <LegalTutorsTable tutors={legalTutors} onChange={() => {}} readOnly />
             </div>
           )}
         </div>

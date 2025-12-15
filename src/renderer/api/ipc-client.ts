@@ -6,6 +6,7 @@ import {
   EmergencyContactCreateInput,
   EmergencyContactUpdateInput,
 } from '../../types/emergency-contact';
+import { LegalTutor, LegalTutorCreateInput, LegalTutorUpdateInput } from '../../types/legal-tutor';
 
 /**
  * IPC Client
@@ -46,10 +47,22 @@ declare global {
         ) => Promise<ApiResponse<EmergencyContact>>;
         delete: (id: number) => Promise<ApiResponse>;
       };
+      legalTutor: {
+        create: (tutorData: LegalTutorCreateInput) => Promise<ApiResponse<LegalTutor>>;
+        getByPatientId: (patientId: number) => Promise<ApiResponse<LegalTutor[]>>;
+        getById: (id: number) => Promise<ApiResponse<LegalTutor>>;
+        update: (tutorData: LegalTutorUpdateInput) => Promise<ApiResponse<LegalTutor>>;
+        delete: (id: number) => Promise<ApiResponse>;
+      };
       backup: {
         export: () => Promise<ApiResponse>;
         import: () => Promise<
-          ApiResponse<{ patients: number; notes: number; emergencyContacts: number }>
+          ApiResponse<{
+            patients: number;
+            notes: number;
+            emergencyContacts: number;
+            legalTutors: number;
+          }>
         >;
         onImportProgress: (callback: (progress: unknown) => void) => void;
         removeImportProgressListener: () => void;
@@ -138,6 +151,28 @@ export class IpcClient {
     return window.api.emergencyContact.delete(id);
   }
 
+  // ==================== Legal Tutor API ====================
+
+  async createLegalTutor(tutorData: LegalTutorCreateInput): Promise<ApiResponse<LegalTutor>> {
+    return window.api.legalTutor.create(tutorData);
+  }
+
+  async getLegalTutorsByPatientId(patientId: number): Promise<ApiResponse<LegalTutor[]>> {
+    return window.api.legalTutor.getByPatientId(patientId);
+  }
+
+  async getLegalTutorById(id: number): Promise<ApiResponse<LegalTutor>> {
+    return window.api.legalTutor.getById(id);
+  }
+
+  async updateLegalTutor(tutorData: LegalTutorUpdateInput): Promise<ApiResponse<LegalTutor>> {
+    return window.api.legalTutor.update(tutorData);
+  }
+
+  async deleteLegalTutor(id: number): Promise<ApiResponse> {
+    return window.api.legalTutor.delete(id);
+  }
+
   // ==================== Backup API ====================
 
   async exportBackup(): Promise<ApiResponse> {
@@ -145,7 +180,12 @@ export class IpcClient {
   }
 
   async importBackup(): Promise<
-    ApiResponse<{ patients: number; notes: number; emergencyContacts: number }>
+    ApiResponse<{
+      patients: number;
+      notes: number;
+      emergencyContacts: number;
+      legalTutors: number;
+    }>
   > {
     return window.api.backup.import();
   }
