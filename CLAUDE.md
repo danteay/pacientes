@@ -283,3 +283,4 @@ Configure makers in `forge.config.js` for platform-specific build options.
 - to memorize
 - Add to memory. "Backend folder struccture should be next: main/database/migrations, main/database/driver, main/domains, main/<domain-name>/[service|repository|usecases]. Service folder should contain bussines logic related just to the main domain, service also can only import its own domain repository. Repository should contain data logic (transformations, auto generations, etc) and should receive a DB driver as constructor parameter. UseCases are complex domain operations that can include multiple other domain services or use cases."
 - to memorize
+- to memorize
