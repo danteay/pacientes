@@ -55,9 +55,10 @@ export function usePatients(): UsePatientsReturn {
     setError(null);
 
     try {
-      const response = searchTerm
-        ? await ipcClient.searchPatients(searchTerm, status)
-        : await ipcClient.getAllPatients();
+      const response =
+        searchTerm || status
+          ? await ipcClient.searchPatients(searchTerm, status)
+          : await ipcClient.getAllPatients();
 
       const data = unwrapApiResponse(response);
       setPatients(data);

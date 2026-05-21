@@ -1,25 +1,26 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../../atoms/Button/Button';
 
 export interface SearchBarProps {
+  value: string;
+  onChange: (value: string) => void;
   onSearch: (searchTerm: string) => void;
   placeholder?: string;
   buttonText?: string;
-  initialValue?: string;
 }
 
 export const SearchBar: React.FC<SearchBarProps> = ({
+  value,
+  onChange,
   onSearch,
   placeholder,
   buttonText,
-  initialValue = '',
 }) => {
   const { t } = useTranslation();
-  const [searchTerm, setSearchTerm] = useState(initialValue);
 
   const handleSearch = () => {
-    onSearch(searchTerm);
+    onSearch(value);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -35,8 +36,8 @@ export const SearchBar: React.FC<SearchBarProps> = ({
           type="text"
           placeholder={placeholder ?? `${t('common.search')}...`}
           className="input"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
         />
       </div>

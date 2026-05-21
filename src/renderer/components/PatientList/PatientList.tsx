@@ -115,6 +115,8 @@ export const PatientList: React.FC<PatientListProps> = ({
                 </label>
                 <div className="control">
                   <SearchBar
+                    value={searchTerm}
+                    onChange={setSearchTerm}
                     onSearch={handleSearch}
                     placeholder={t('patient.list.searchPlaceholder')}
                   />

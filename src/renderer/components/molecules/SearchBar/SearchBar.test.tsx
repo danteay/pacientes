@@ -1,55 +1,68 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { SearchBar } from './SearchBar';
 
+interface HarnessProps {
+  initialValue?: string;
+  onSearch?: (term: string) => void;
+  placeholder?: string;
+  buttonText?: string;
+}
+
+const Harness: React.FC<HarnessProps> = ({
+  initialValue = '',
+  onSearch = jest.fn(),
+  placeholder,
+  buttonText,
+}) => {
+  const [value, setValue] = useState(initialValue);
+  return (
+    <SearchBar
+      value={value}
+      onChange={setValue}
+      onSearch={onSearch}
+      placeholder={placeholder}
+      buttonText={buttonText}
+    />
+  );
+};
+
 describe('SearchBar Component', () => {
   it('should render search input', () => {
-    render(<SearchBar onSearch={jest.fn()} />);
-
-    const input = screen.getByRole('textbox');
-    expect(input).toBeInTheDocument();
+    render(<Harness />);
+    expect(screen.getByRole('textbox')).toBeInTheDocument();
   });
 
   it('should render with custom placeholder', () => {
-    render(<SearchBar onSearch={jest.fn()} placeholder="Search patients..." />);
-
-    const input = screen.getByPlaceholderText('Search patients...');
-    expect(input).toBeInTheDocument();
+    render(<Harness placeholder="Search patients..." />);
+    expect(screen.getByPlaceholderText('Search patients...')).toBeInTheDocument();
   });
 
   it('should render with default placeholder', () => {
-    render(<SearchBar onSearch={jest.fn()} />);
-
-    const input = screen.getByPlaceholderText('Search...');
-    expect(input).toBeInTheDocument();
+    render(<Harness />);
+    expect(screen.getByPlaceholderText('Search...')).toBeInTheDocument();
   });
 
   it('should update input value when user types', () => {
-    render(<SearchBar onSearch={jest.fn()} />);
-
+    render(<Harness />);
     const input = screen.getByRole('textbox') as HTMLInputElement;
     fireEvent.change(input, { target: { value: 'test query' } });
-
     expect(input.value).toBe('test query');
   });
 
   it('should render search button with default text', () => {
-    render(<SearchBar onSearch={jest.fn()} />);
-
-    const button = screen.getByRole('button', { name: /search/i });
-    expect(button).toBeInTheDocument();
+    render(<Harness />);
+    expect(screen.getByRole('button', { name: /search/i })).toBeInTheDocument();
   });
 
   it('should render search button with custom text', () => {
-    render(<SearchBar onSearch={jest.fn()} buttonText="Find" />);
-
-    const button = screen.getByRole('button', { name: /find/i });
-    expect(button).toBeInTheDocument();
+    render(<Harness buttonText="Find" />);
+    expect(screen.getByRole('button', { name: /find/i })).toBeInTheDocument();
   });
 
   it('should call onSearch when button is clicked', () => {
     const handleSearch = jest.fn();
-    render(<SearchBar onSearch={handleSearch} />);
+    render(<Harness onSearch={handleSearch} />);
 
     const input = screen.getByRole('textbox');
     const button = screen.getByRole('button');
@@ -63,7 +76,7 @@ describe('SearchBar Component', () => {
 
   it('should call onSearch when enter key is pressed', () => {
     const handleSearch = jest.fn();
-    render(<SearchBar onSearch={handleSearch} />);
+    render(<Harness onSearch={handleSearch} />);
 
     const input = screen.getByRole('textbox');
 
@@ -75,27 +88,24 @@ describe('SearchBar Component', () => {
 
   it('should handle empty search query', () => {
     const handleSearch = jest.fn();
-    render(<SearchBar onSearch={handleSearch} />);
+    render(<Harness onSearch={handleSearch} />);
 
-    const button = screen.getByRole('button');
-    fireEvent.click(button);
+    fireEvent.click(screen.getByRole('button'));
 
     expect(handleSearch).toHaveBeenCalledWith('');
   });
 
   it('should initialize with initial value', () => {
-    render(<SearchBar onSearch={jest.fn()} initialValue="initial" />);
-
+    render(<Harness initialValue="initial" />);
     const input = screen.getByRole('textbox') as HTMLInputElement;
     expect(input.value).toBe('initial');
   });
 
   it('should call onSearch with initial value when button clicked', () => {
     const handleSearch = jest.fn();
-    render(<SearchBar onSearch={handleSearch} initialValue="initial" />);
+    render(<Harness onSearch={handleSearch} initialValue="initial" />);
 
-    const button = screen.getByRole('button');
-    fireEvent.click(button);
+    fireEvent.click(screen.getByRole('button'));
 
     expect(handleSearch).toHaveBeenCalledWith('initial');
   });
