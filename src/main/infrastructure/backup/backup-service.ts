@@ -6,15 +6,17 @@ import { Patient } from '../../../types/patient';
 import { Note } from '../../../types/note';
 import { EmergencyContact } from '../../../types/emergency-contact';
 import { LegalTutor } from '../../../types/legal-tutor';
+import { Attachment } from '../../../types/attachment';
 
 const gzip = promisify(zlib.gzip);
 const gunzip = promisify(zlib.gunzip);
 
-// Type for exported patient (without id, with notes, emergency contacts, and legal tutors arrays)
+// Types
 type ExportedPatient = Omit<Patient, 'id'> & {
   notes: Array<Omit<Note, 'id'>>;
   emergencyContacts: Array<Omit<EmergencyContact, 'id' | 'patientId'>>;
   legalTutors: Array<Omit<LegalTutor, 'id' | 'patientId'>>;
+  attachments: Array<Omit<Attachment, 'id' | 'patientId'>>;
 };
 
 export interface ExportData {
@@ -30,6 +32,26 @@ export interface ImportProgress {
   message: string;
 }
 
+interface ImportStats {
+  patientsInserted: number;
+  notesInserted: number;
+  emergencyContactsInserted: number;
+  legalTutorsInserted: number;
+  attachmentsInserted: number;
+}
+
+interface EntityWithPatientEmail extends Record<string, unknown> {
+  patientEmail: string;
+}
+
+/**
+ * BackupService - Handles database export and import operations
+ *
+ * Responsibilities:
+ * - Export patient data with related entities to compressed JSON
+ * - Import patient data with proper duplicate handling
+ * - Maintain data integrity during backup/restore operations
+ */
 export class BackupService {
   private db: Database.Database;
 
@@ -37,463 +59,563 @@ export class BackupService {
     this.db = db;
   }
 
+  // ==================== PUBLIC API ====================
+
+  /**
+   * Export entire database to compressed JSON file
+   */
   async exportDatabase(filePath: string): Promise<{ success: boolean; error?: string }> {
     try {
-      // Check if file already exists
-      if (fs.existsSync(filePath)) {
-        return {
-          success: false,
-          error: 'File already exists. Please choose a different location.',
-        };
-      }
+      this.validateExportPath(filePath);
 
-      // Get all patients (excluding id)
-      const patientsStmt = this.db.prepare(`
-        SELECT name, age, email, phoneNumber, birthDate, maritalStatus, gender,
-               sexualOrientation, status, educationalLevel, profession, livesWith, children,
-               previousPsychologicalExperience, firstAppointmentDate,
-               createdAt, updatedAt
-        FROM patients
-      `);
-      const patients = patientsStmt.all() as Array<Record<string, unknown>>;
+      const patients = this.fetchPatients();
+      const patientsWithRelations = await this.enrichPatientsWithRelations(patients);
+      const exportData = this.createExportData(patientsWithRelations);
 
-      // Get all notes (excluding id)
-      const notesStmt = this.db.prepare(`
-        SELECT n.title, n.content, n.createdAt, n.updatedAt, p.email as patientEmail
-        FROM notes n
-        JOIN patients p ON n.patientId = p.id
-      `);
-      const notes = notesStmt.all() as Array<Record<string, unknown>>;
-
-      // Group notes by patient email
-      const notesByEmail = new Map<string, Array<Record<string, unknown>>>();
-      for (const note of notes) {
-        const email = note.patientEmail as string;
-        if (!notesByEmail.has(email)) {
-          notesByEmail.set(email, []);
-        }
-        // Remove patientEmail field from note before adding
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { patientEmail, ...noteWithoutEmail } = note;
-        notesByEmail.get(email)!.push(noteWithoutEmail);
-      }
-
-      // Get all emergency contacts (excluding id and patientId)
-      const emergencyContactsStmt = this.db.prepare(`
-        SELECT ec.fullName, ec.phoneNumber, ec.relation, ec.email, ec.address,
-               ec.createdAt, ec.updatedAt, p.email as patientEmail
-        FROM emergency_contacts ec
-        JOIN patients p ON ec.patientId = p.id
-      `);
-      const emergencyContacts = emergencyContactsStmt.all() as Array<Record<string, unknown>>;
-
-      // Group emergency contacts by patient email
-      const contactsByEmail = new Map<string, Array<Record<string, unknown>>>();
-      for (const contact of emergencyContacts) {
-        const email = contact.patientEmail as string;
-        if (!contactsByEmail.has(email)) {
-          contactsByEmail.set(email, []);
-        }
-        // Remove patientEmail field from contact before adding
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { patientEmail, ...contactWithoutEmail } = contact;
-        contactsByEmail.get(email)!.push(contactWithoutEmail);
-      }
-
-      // Get all legal tutors (excluding id and patientId)
-      const legalTutorsStmt = this.db.prepare(`
-        SELECT lt.fullName, lt.phoneNumber, lt.relation, lt.email, lt.birthDate, lt.address,
-               lt.createdAt, lt.updatedAt, p.email as patientEmail
-        FROM legal_tutors lt
-        JOIN patients p ON lt.patientId = p.id
-      `);
-      const legalTutors = legalTutorsStmt.all() as Array<Record<string, unknown>>;
-
-      // Group legal tutors by patient email
-      const tutorsByEmail = new Map<string, Array<Record<string, unknown>>>();
-      for (const tutor of legalTutors) {
-        const email = tutor.patientEmail as string;
-        if (!tutorsByEmail.has(email)) {
-          tutorsByEmail.set(email, []);
-        }
-        // Remove patientEmail field from tutor before adding
-        // eslint-disable-next-line @typescript-eslint/no-unused-vars
-        const { patientEmail, ...tutorWithoutEmail } = tutor;
-        tutorsByEmail.get(email)!.push(tutorWithoutEmail);
-      }
-
-      // Add notes, emergency contacts, and legal tutors arrays to each patient
-      const patientsWithNotes = patients.map((patient) => ({
-        ...patient,
-        notes: notesByEmail.get(patient.email as string) || [],
-        emergencyContacts: contactsByEmail.get(patient.email as string) || [],
-        legalTutors: tutorsByEmail.get(patient.email as string) || [],
-      })) as ExportedPatient[];
-
-      // Create export data structure
-      const exportData: ExportData = {
-        version: '1.0',
-        exportDate: new Date().toISOString(),
-        patients: patientsWithNotes,
-      };
-
-      // Convert to JSON and compress
-      const jsonData = JSON.stringify(exportData, null, 2);
-      const compressed = await gzip(Buffer.from(jsonData, 'utf-8'));
-
-      // Write to file
-      fs.writeFileSync(filePath, compressed);
+      await this.writeExportFile(filePath, exportData);
 
       return { success: true };
     } catch (error) {
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
+      return this.handleError(error);
     }
   }
 
+  /**
+   * Import database from compressed JSON file
+   */
   async importDatabase(
     filePath: string,
     progressCallback?: (progress: ImportProgress) => void
   ): Promise<{
     success: boolean;
     error?: string;
-    stats?: { patients: number; notes: number; emergencyContacts: number; legalTutors: number };
+    stats?: ImportStats;
   }> {
     try {
-      if (process.env.DEBUG === 'true') {
-        console.log('[DEBUG] BackupService: Starting import from', filePath);
-      }
+      this.logDebug('Starting import from', filePath);
 
-      progressCallback?.({
-        stage: 'reading',
-        current: 0,
-        total: 100,
-        message: 'Reading backup file...',
-      });
-      // Stage 1: Reading file
-      const data = await this.getExportData(filePath);
+      const data = await this.readExportFile(filePath, progressCallback);
+      const stats = await this.importPatients(data, progressCallback);
 
-      if (process.env.DEBUG === 'true') {
-        console.log('[DEBUG] BackupService: Export data loaded, version:', data.version);
-        console.log('[DEBUG] BackupService: Total patients to import:', data.patients.length);
-      }
+      this.notifyComplete(progressCallback);
+      this.logDebug('Import complete:', stats);
 
-      const totalPatients = data.patients.length;
-
-      progressCallback?.({
-        stage: 'importing_patients',
-        current: 0,
-        total: 100,
-        message: 'Importing patients...',
-      });
-
-      let patientsImported = 0;
-      let notesImported = 0;
-      let emergencyContactsImported = 0;
-      let legalTutorsImported = 0;
-
-      // Stage 2: Importing patients
-      for (let i = 0; i < data.patients.length; i++) {
-        const patientData = data.patients[i];
-
-        if (process.env.DEBUG === 'true') {
-          console.log(
-            `[DEBUG] BackupService: Importing patient ${i + 1}/${totalPatients}:`,
-            patientData.email
-          );
-        }
-
-        try {
-          const stats = await this.insertPatient(patientData);
-          patientsImported += stats.patientsInserted;
-          notesImported += stats.notesInserted;
-          emergencyContactsImported += stats.emergencyContactsInserted;
-          legalTutorsImported += stats.legalTutorsInserted;
-
-          if (process.env.DEBUG === 'true') {
-            console.log(`[DEBUG] BackupService: Patient import stats:`, stats);
-          }
-        } catch (error) {
-          if (process.env.DEBUG === 'true') {
-            console.error(`[DEBUG] BackupService: Error importing patient ${i + 1}:`, error);
-          }
-          throw error;
-        }
-
-        const percent = this.calculatePercentage(i + 1, totalPatients);
-        progressCallback?.({
-          stage: 'importing_patients',
-          current: percent,
-          total: 100,
-          message: `Importing patients... (${i + 1}/${totalPatients})`,
-        });
-      }
-
-      // Stage 5: Complete
-      progressCallback?.({
-        stage: 'complete',
-        current: 100,
-        total: 100,
-        message: 'Import complete!',
-      });
-
-      const result = {
-        success: true,
-        stats: {
-          patients: patientsImported,
-          notes: notesImported,
-          emergencyContacts: emergencyContactsImported,
-          legalTutors: legalTutorsImported,
-        },
-      };
-
-      if (process.env.DEBUG === 'true') {
-        console.log('[DEBUG] BackupService: Import complete:', result);
-      }
-
-      return result;
+      return { success: true, stats };
     } catch (error) {
-      if (process.env.DEBUG === 'true') {
-        console.error('[DEBUG] BackupService: Import failed with error:', error);
-      }
-      return {
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred',
-      };
+      this.logDebug('Import failed with error:', error);
+      return this.handleError(error);
     }
   }
 
-  async patientExists(email: string): Promise<number> {
-    const stmt = this.db.prepare('SELECT id FROM patients WHERE email = ?');
-    const row = stmt.get(email) as { id: number } | undefined;
+  // ==================== EXPORT METHODS ====================
 
-    if (row) {
-      return row.id;
+  /**
+   * Validate export file path doesn't already exist
+   */
+  private validateExportPath(filePath: string): void {
+    if (fs.existsSync(filePath)) {
+      throw new Error('File already exists. Please choose a different location.');
     }
-
-    return 0;
   }
 
-  async insertPatient(patientData: ExportedPatient): Promise<{
-    patientsInserted: number;
-    notesInserted: number;
-    emergencyContactsInserted: number;
-    legalTutorsInserted: number;
-  }> {
-    let patientId = await this.patientExists(patientData.email);
-    let patientsInserted = 0;
-    let notesInserted = 0;
-    let emergencyContactsInserted = 0;
-    let legalTutorsInserted = 0;
-
-    if (patientId === 0) {
-      const patientFields = Object.keys(patientData).filter(
-        (key) => key !== 'notes' && key !== 'emergencyContacts' && key !== 'legalTutors'
-      );
-
-      const patientPlaceholders = patientFields.map(() => '?');
-
-      const fieldsStr = patientFields.join(', ');
-      const placeholdersStr = patientPlaceholders.join(', ');
-
-      const values = patientFields.map(
-        (field) =>
-          patientData[
-            field as keyof Omit<ExportedPatient, 'notes' | 'emergencyContacts' | 'legalTutors'>
-          ]
-      );
-
-      const stmt = this.db.prepare(`
-      INSERT INTO patients (${fieldsStr})
-      VALUES (${placeholdersStr})
-    `);
-
-      const result = stmt.run(...values);
-      patientId = result.lastInsertRowid as number;
-      patientsInserted = 1;
-    }
-
-    // If there are notes, insert them
-    if (patientData.notes && Array.isArray(patientData.notes)) {
-      for (const noteData of patientData.notes as Array<Omit<Note, 'id'>>) {
-        const inserted = await this.insertNote(patientId, noteData);
-        if (inserted) {
-          notesInserted++;
-        }
-      }
-    }
-
-    // If there are emergency contacts, insert them
-    if (patientData.emergencyContacts && Array.isArray(patientData.emergencyContacts)) {
-      for (const contactData of patientData.emergencyContacts as Array<
-        Omit<EmergencyContact, 'id' | 'patientId'>
-      >) {
-        const inserted = await this.insertEmergencyContact(patientId, contactData);
-        if (inserted) {
-          emergencyContactsInserted++;
-        }
-      }
-    }
-
-    // If there are legal tutors, insert them
-    if (patientData.legalTutors && Array.isArray(patientData.legalTutors)) {
-      for (const tutorData of patientData.legalTutors as Array<
-        Omit<LegalTutor, 'id' | 'patientId'>
-      >) {
-        const inserted = await this.insertLegalTutor(patientId, tutorData);
-        if (inserted) {
-          legalTutorsInserted++;
-        }
-      }
-    }
-
-    return { patientsInserted, notesInserted, emergencyContactsInserted, legalTutorsInserted };
-  }
-
-  async insertNote(patientId: number, noteData: Omit<Note, 'id'>): Promise<boolean> {
-    // Check for duplicate note (same patient, title, and createdAt)
-    const checkDuplicateStmt = this.db.prepare(`
-      SELECT COUNT(*) as count
-      FROM notes
-      WHERE patientId = ? AND title = ? AND createdAt = ?
-    `);
-
-    const duplicate = checkDuplicateStmt.get(patientId, noteData.title, noteData.createdAt) as {
-      count: number;
-    };
-
-    if (duplicate.count > 0) {
-      // Note already exists, skip insertion
-      return false;
-    }
-
-    const noteFields = Object.keys(noteData);
-
-    // Always ensure patientId is first
-    const allFields = ['patientId', ...noteFields];
-    const notePlaceholders = allFields.map(() => '?');
-
-    const fieldsStr = allFields.join(', ');
-    const placeholdersStr = notePlaceholders.join(', ');
-
-    const values = [
-      patientId,
-      ...noteFields.map((field) => noteData[field as keyof Omit<Note, 'id'>]),
-    ];
-
+  /**
+   * Fetch all patients from database (excluding IDs)
+   */
+  private fetchPatients(): Array<Record<string, unknown>> {
     const stmt = this.db.prepare(`
-      INSERT INTO notes (${fieldsStr})
-      VALUES (${placeholdersStr})
+      SELECT name, age, email, phoneNumber, birthDate, maritalStatus, gender,
+             sexualOrientation, status, educationalLevel, profession, livesWith, children,
+             previousPsychologicalExperience, firstAppointmentDate,
+             createdAt, updatedAt
+      FROM patients
     `);
-
-    stmt.run(...values);
-    return true;
+    return stmt.all() as Array<Record<string, unknown>>;
   }
 
-  async insertEmergencyContact(
-    patientId: number,
-    contactData: Omit<EmergencyContact, 'id' | 'patientId'>
-  ): Promise<boolean> {
-    // Check for duplicate emergency contact (same patient, email, and phone number)
-    const checkDuplicateStmt = this.db.prepare(`
-      SELECT COUNT(*) as count
-      FROM emergency_contacts
-      WHERE patientId = ? AND email = ? AND phoneNumber = ?
-    `);
+  /**
+   * Enrich patients with all related entities
+   */
+  private async enrichPatientsWithRelations(
+    patients: Array<Record<string, unknown>>
+  ): Promise<ExportedPatient[]> {
+    const notesByEmail = this.fetchAndGroupByEmail('notes', [
+      'title',
+      'content',
+      'creationDate',
+      'createdAt',
+      'updatedAt',
+    ]);
 
-    const duplicate = checkDuplicateStmt.get(
-      patientId,
-      contactData.email,
-      contactData.phoneNumber
-    ) as {
-      count: number;
-    };
+    const contactsByEmail = this.fetchAndGroupByEmail('emergency_contacts', [
+      'fullName',
+      'phoneNumber',
+      'relation',
+      'email',
+      'address',
+      'createdAt',
+      'updatedAt',
+    ]);
 
-    if (duplicate.count > 0) {
-      // Emergency contact already exists, skip insertion
-      return false;
+    const tutorsByEmail = this.fetchAndGroupByEmail('legal_tutors', [
+      'fullName',
+      'phoneNumber',
+      'relation',
+      'email',
+      'birthDate',
+      'address',
+      'createdAt',
+      'updatedAt',
+    ]);
+
+    const attachmentsByEmail = this.fetchAndGroupByEmail('attachments', [
+      'name',
+      'url',
+      'createdAt',
+      'updatedAt',
+    ]);
+
+    return patients.map((patient) => ({
+      ...patient,
+      notes: notesByEmail.get(patient.email as string) || [],
+      emergencyContacts: contactsByEmail.get(patient.email as string) || [],
+      legalTutors: tutorsByEmail.get(patient.email as string) || [],
+      attachments: attachmentsByEmail.get(patient.email as string) || [],
+    })) as ExportedPatient[];
+  }
+
+  /**
+   * Generic method to fetch entities and group by patient email
+   */
+  private fetchAndGroupByEmail(
+    tableName: string,
+    fields: string[]
+  ): Map<string, Array<Record<string, unknown>>> {
+    const query = `
+      SELECT ${fields.map((f) => `e.${f}`).join(', ')}, p.email as patientEmail
+      FROM ${tableName} e
+      JOIN patients p ON e.patientId = p.id
+    `;
+
+    const entities = this.db.prepare(query).all() as EntityWithPatientEmail[];
+    return this.groupEntitiesByEmail(entities);
+  }
+
+  /**
+   * Group entities by patient email and remove patientEmail field
+   */
+  private groupEntitiesByEmail(
+    entities: EntityWithPatientEmail[]
+  ): Map<string, Array<Record<string, unknown>>> {
+    const grouped = new Map<string, Array<Record<string, unknown>>>();
+
+    for (const entity of entities) {
+      const email = entity.patientEmail;
+      if (!grouped.has(email)) {
+        grouped.set(email, []);
+      }
+
+      // Remove patientEmail field from entity
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { patientEmail, ...entityWithoutEmail } = entity;
+      grouped.get(email)!.push(entityWithoutEmail);
     }
 
-    const contactFields = Object.keys(contactData);
-
-    // Always ensure patientId is first
-    const allFields = ['patientId', ...contactFields];
-    const contactPlaceholders = allFields.map(() => '?');
-
-    const fieldsStr = allFields.join(', ');
-    const placeholdersStr = contactPlaceholders.join(', ');
-
-    const values = [
-      patientId,
-      ...contactFields.map(
-        (field) => contactData[field as keyof Omit<EmergencyContact, 'id' | 'patientId'>]
-      ),
-    ];
-
-    const stmt = this.db.prepare(`
-      INSERT INTO emergency_contacts (${fieldsStr})
-      VALUES (${placeholdersStr})
-    `);
-
-    stmt.run(...values);
-    return true;
+    return grouped;
   }
 
-  async insertLegalTutor(
-    patientId: number,
-    tutorData: Omit<LegalTutor, 'id' | 'patientId'>
-  ): Promise<boolean> {
-    // Check for duplicate legal tutor (same patient, email, and phone number)
-    const checkDuplicateStmt = this.db.prepare(`
-      SELECT COUNT(*) as count
-      FROM legal_tutors
-      WHERE patientId = ? AND email = ? AND phoneNumber = ?
-    `);
-
-    const duplicate = checkDuplicateStmt.get(patientId, tutorData.email, tutorData.phoneNumber) as {
-      count: number;
+  /**
+   * Create export data structure with metadata
+   */
+  private createExportData(patients: ExportedPatient[]): ExportData {
+    return {
+      version: '1.0',
+      exportDate: new Date().toISOString(),
+      patients,
     };
-
-    if (duplicate.count > 0) {
-      // Legal tutor already exists, skip insertion
-      return false;
-    }
-
-    const tutorFields = Object.keys(tutorData);
-
-    // Always ensure patientId is first
-    const allFields = ['patientId', ...tutorFields];
-    const tutorPlaceholders = allFields.map(() => '?');
-
-    const fieldsStr = allFields.join(', ');
-    const placeholdersStr = tutorPlaceholders.join(', ');
-
-    const values = [
-      patientId,
-      ...tutorFields.map((field) => tutorData[field as keyof Omit<LegalTutor, 'id' | 'patientId'>]),
-    ];
-
-    const stmt = this.db.prepare(`
-      INSERT INTO legal_tutors (${fieldsStr})
-      VALUES (${placeholdersStr})
-    `);
-
-    stmt.run(...values);
-    return true;
   }
 
-  async getExportData(filePath: string): Promise<ExportData> {
+  /**
+   * Write export data to compressed file
+   */
+  private async writeExportFile(filePath: string, data: ExportData): Promise<void> {
+    const jsonData = JSON.stringify(data, null, 2);
+    const compressed = await gzip(Buffer.from(jsonData, 'utf-8'));
+    fs.writeFileSync(filePath, compressed);
+  }
+
+  // ==================== IMPORT METHODS ====================
+
+  /**
+   * Read and decompress export file
+   */
+  private async readExportFile(
+    filePath: string,
+    progressCallback?: (progress: ImportProgress) => void
+  ): Promise<ExportData> {
+    this.notifyProgress(progressCallback, 'reading', 0, 'Reading backup file...');
+
     const compressed = fs.readFileSync(filePath);
     const decompressed = await gunzip(compressed);
     const jsonData = decompressed.toString('utf-8');
+    const data = JSON.parse(jsonData) as ExportData;
 
-    return JSON.parse(jsonData) as ExportData;
+    this.logDebug('Export data loaded, version:', data.version);
+    this.logDebug('Total patients to import:', data.patients.length);
+
+    return data;
   }
 
-  calculatePercentage(current: number, total: number): number {
+  /**
+   * Import all patients with progress tracking
+   */
+  private async importPatients(
+    data: ExportData,
+    progressCallback?: (progress: ImportProgress) => void
+  ): Promise<ImportStats> {
+    const totalStats: ImportStats = {
+      patientsInserted: 0,
+      notesInserted: 0,
+      emergencyContactsInserted: 0,
+      legalTutorsInserted: 0,
+      attachmentsInserted: 0,
+    };
+
+    const totalPatients = data.patients.length;
+    this.notifyProgress(progressCallback, 'importing_patients', 0, 'Importing patients...');
+
+    for (let i = 0; i < data.patients.length; i++) {
+      const patientData = data.patients[i];
+      this.logDebug(`Importing patient ${i + 1}/${totalPatients}:`, patientData.email);
+
+      const stats = await this.importPatient(patientData);
+      this.accumulateStats(totalStats, stats);
+
+      const percent = this.calculatePercentage(i + 1, totalPatients);
+      this.notifyProgress(
+        progressCallback,
+        'importing_patients',
+        percent,
+        `Importing patients... (${i + 1}/${totalPatients})`
+      );
+    }
+
+    return totalStats;
+  }
+
+  /**
+   * Import single patient with all related entities
+   */
+  private async importPatient(patientData: ExportedPatient): Promise<ImportStats> {
+    const patientId = await this.getOrCreatePatient(patientData);
+
+    const stats: ImportStats = {
+      patientsInserted: patientId > 0 ? 1 : 0,
+      notesInserted: await this.importNotes(patientId, patientData.notes),
+      emergencyContactsInserted: await this.importEmergencyContacts(
+        patientId,
+        patientData.emergencyContacts
+      ),
+      legalTutorsInserted: await this.importLegalTutors(patientId, patientData.legalTutors),
+      attachmentsInserted: await this.importAttachments(patientId, patientData.attachments),
+    };
+
+    this.logDebug('Patient import stats:', stats);
+    return stats;
+  }
+
+  /**
+   * Get existing patient ID or create new patient
+   */
+  private async getOrCreatePatient(patientData: ExportedPatient): Promise<number> {
+    const existingId = await this.findPatientByEmail(patientData.email);
+
+    if (existingId > 0) {
+      return existingId;
+    }
+
+    return this.createPatient(patientData);
+  }
+
+  /**
+   * Find patient by email
+   */
+  private async findPatientByEmail(email: string): Promise<number> {
+    const stmt = this.db.prepare('SELECT id FROM patients WHERE email = ?');
+    const row = stmt.get(email) as { id: number } | undefined;
+    return row?.id || 0;
+  }
+
+  /**
+   * Create new patient record
+   */
+  private createPatient(patientData: ExportedPatient): number {
+    const patientFields = this.getPatientFields(patientData);
+    const query = this.buildInsertQuery('patients', patientFields);
+    const values = patientFields.map((field) => patientData[field as keyof ExportedPatient]);
+
+    const result = this.db.prepare(query).run(...values);
+    return result.lastInsertRowid as number;
+  }
+
+  /**
+   * Get patient-specific fields (excluding related entities)
+   */
+  private getPatientFields(patientData: ExportedPatient): string[] {
+    return Object.keys(patientData).filter(
+      (key) =>
+        key !== 'notes' &&
+        key !== 'emergencyContacts' &&
+        key !== 'legalTutors' &&
+        key !== 'attachments'
+    );
+  }
+
+  // ==================== ENTITY IMPORT METHODS ====================
+
+  /**
+   * Import notes for a patient
+   */
+  private async importNotes(
+    patientId: number,
+    notes: Array<Omit<Note, 'id'>> | undefined
+  ): Promise<number> {
+    if (!notes || !Array.isArray(notes)) return 0;
+
+    let inserted = 0;
+    for (const noteData of notes) {
+      const success = await this.insertNote(patientId, noteData);
+      if (success) inserted++;
+    }
+    return inserted;
+  }
+
+  /**
+   * Import emergency contacts for a patient
+   */
+  private async importEmergencyContacts(
+    patientId: number,
+    contacts: Array<Omit<EmergencyContact, 'id' | 'patientId'>> | undefined
+  ): Promise<number> {
+    if (!contacts || !Array.isArray(contacts)) return 0;
+
+    let inserted = 0;
+    for (const contactData of contacts) {
+      const success = await this.insertEmergencyContact(patientId, contactData);
+      if (success) inserted++;
+    }
+    return inserted;
+  }
+
+  /**
+   * Import legal tutors for a patient
+   */
+  private async importLegalTutors(
+    patientId: number,
+    tutors: Array<Omit<LegalTutor, 'id' | 'patientId'>> | undefined
+  ): Promise<number> {
+    if (!tutors || !Array.isArray(tutors)) return 0;
+
+    let inserted = 0;
+    for (const tutorData of tutors) {
+      const success = await this.insertLegalTutor(patientId, tutorData);
+      if (success) inserted++;
+    }
+    return inserted;
+  }
+
+  /**
+   * Import attachments for a patient
+   */
+  private async importAttachments(
+    patientId: number,
+    attachments: Array<Omit<Attachment, 'id' | 'patientId'>> | undefined
+  ): Promise<number> {
+    if (!attachments || !Array.isArray(attachments)) return 0;
+
+    let inserted = 0;
+    for (const attachmentData of attachments) {
+      const success = await this.insertAttachment(patientId, attachmentData);
+      if (success) inserted++;
+    }
+    return inserted;
+  }
+
+  // ==================== ENTITY INSERTION METHODS ====================
+
+  /**
+   * Insert note with duplicate detection
+   */
+  private async insertNote(patientId: number, noteData: Omit<Note, 'id'>): Promise<boolean> {
+    const isDuplicate = this.checkDuplicate('notes', {
+      patientId,
+      title: noteData.title,
+      createdAt: noteData.createdAt,
+    });
+
+    if (isDuplicate) return false;
+
+    return this.insertEntity('notes', { ...noteData });
+  }
+
+  /**
+   * Insert emergency contact with duplicate detection
+   */
+  private async insertEmergencyContact(
+    patientId: number,
+    contactData: Omit<EmergencyContact, 'id' | 'patientId'>
+  ): Promise<boolean> {
+    const isDuplicate = this.checkDuplicate('emergency_contacts', {
+      patientId,
+      email: contactData.email,
+      phoneNumber: contactData.phoneNumber,
+    });
+
+    if (isDuplicate) return false;
+
+    return this.insertEntity('emergency_contacts', { patientId, ...contactData });
+  }
+
+  /**
+   * Insert legal tutor with duplicate detection
+   */
+  private async insertLegalTutor(
+    patientId: number,
+    tutorData: Omit<LegalTutor, 'id' | 'patientId'>
+  ): Promise<boolean> {
+    const isDuplicate = this.checkDuplicate('legal_tutors', {
+      patientId,
+      email: tutorData.email,
+      phoneNumber: tutorData.phoneNumber,
+    });
+
+    if (isDuplicate) return false;
+
+    return this.insertEntity('legal_tutors', { patientId, ...tutorData });
+  }
+
+  /**
+   * Insert attachment with smart duplicate handling
+   */
+  private async insertAttachment(
+    patientId: number,
+    attachmentData: Omit<Attachment, 'id' | 'patientId'>
+  ): Promise<boolean> {
+    const existingName = this.findAttachmentByUrl(patientId, attachmentData.url);
+
+    if (existingName) {
+      // Same URL found
+      if (existingName === attachmentData.name) {
+        return false; // Complete duplicate - skip
+      }
+      // Same URL, different name - rename and insert
+      attachmentData.name = `${attachmentData.name} (dup. ${existingName})`;
+    }
+
+    return this.insertEntity('attachments', { patientId, ...attachmentData });
+  }
+
+  // ==================== GENERIC DATABASE METHODS ====================
+
+  /**
+   * Check if record exists based on criteria
+   */
+  private checkDuplicate(tableName: string, criteria: Record<string, unknown>): boolean {
+    const conditions = Object.keys(criteria)
+      .map((key) => `${key} = ?`)
+      .join(' AND ');
+
+    const query = `SELECT COUNT(*) as count FROM ${tableName} WHERE ${conditions}`;
+    const values = Object.values(criteria);
+
+    const result = this.db.prepare(query).get(...values) as { count: number };
+    return result.count > 0;
+  }
+
+  /**
+   * Find attachment by URL and return its name
+   */
+  private findAttachmentByUrl(patientId: number, url: string): string | null {
+    const query = 'SELECT name FROM attachments WHERE patientId = ? AND url = ?';
+    const result = this.db.prepare(query).get(patientId, url) as { name: string } | undefined;
+    return result?.name || null;
+  }
+
+  /**
+   * Generic entity insertion
+   */
+  private insertEntity(tableName: string, data: Record<string, unknown>): boolean {
+    const query = this.buildInsertQuery(tableName, Object.keys(data));
+    const values = Object.values(data);
+
+    this.db.prepare(query).run(...values);
+    return true;
+  }
+
+  /**
+   * Build dynamic INSERT query
+   */
+  private buildInsertQuery(tableName: string, fields: string[]): string {
+    const fieldsStr = fields.join(', ');
+    const placeholders = fields.map(() => '?').join(', ');
+    return `INSERT INTO ${tableName} (${fieldsStr}) VALUES (${placeholders})`;
+  }
+
+  // ==================== UTILITY METHODS ====================
+
+  /**
+   * Accumulate import statistics
+   */
+  private accumulateStats(total: ImportStats, addition: ImportStats): void {
+    total.patientsInserted += addition.patientsInserted;
+    total.notesInserted += addition.notesInserted;
+    total.emergencyContactsInserted += addition.emergencyContactsInserted;
+    total.legalTutorsInserted += addition.legalTutorsInserted;
+    total.attachmentsInserted += addition.attachmentsInserted;
+  }
+
+  /**
+   * Notify progress callback
+   */
+  private notifyProgress(
+    callback: ((progress: ImportProgress) => void) | undefined,
+    stage: ImportProgress['stage'],
+    current: number,
+    message: string
+  ): void {
+    callback?.({ stage, current, total: 100, message });
+  }
+
+  /**
+   * Notify import completion
+   */
+  private notifyComplete(callback: ((progress: ImportProgress) => void) | undefined): void {
+    this.notifyProgress(callback, 'complete', 100, 'Import complete!');
+  }
+
+  /**
+   * Calculate percentage
+   */
+  private calculatePercentage(current: number, total: number): number {
     if (total === 0) return 100;
     return Math.floor((current / total) * 100);
+  }
+
+  /**
+   * Handle errors consistently
+   */
+  private handleError(error: unknown): { success: false; error: string } {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error occurred',
+    };
+  }
+
+  /**
+   * Debug logging (only in debug mode)
+   */
+  private logDebug(...args: unknown[]): void {
+    if (process.env.DEBUG === 'true') {
+      console.log('[DEBUG] BackupService:', ...args);
+    }
   }
 }

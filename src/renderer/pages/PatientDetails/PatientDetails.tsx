@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { PatientNotes } from '../../components/PatientNotes/PatientNotes';
 import { LoadingSpinner } from '../../components/atoms/LoadingSpinner/LoadingSpinner';
 import { useNotification } from '../../context/NotificationContext';
@@ -19,6 +20,7 @@ const PatientDetails: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
   const { showError } = useNotification();
+  const { t } = useTranslation();
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,7 +38,8 @@ const PatientDetails: React.FC = () => {
         const data = unwrapApiResponse(response);
         setPatient(data);
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to load patient';
+        const errorMessage =
+          error instanceof Error ? error.message : t('errors.failedToLoadPatient');
         showError(errorMessage);
         console.error('Error loading patient:', error);
       } finally {
@@ -45,7 +48,7 @@ const PatientDetails: React.FC = () => {
     };
 
     loadPatient();
-  }, [patientId, showError]);
+  }, [patientId, showError, t]);
 
   const handleBack = () => {
     navigate('/');
@@ -71,7 +74,7 @@ const PatientDetails: React.FC = () => {
     return (
       <section className="section">
         <div className="container">
-          <LoadingSpinner message="Loading patient information..." />
+          <LoadingSpinner message={t('patient.info.loadingInfo')} />
         </div>
       </section>
     );
@@ -82,7 +85,7 @@ const PatientDetails: React.FC = () => {
       <section className="section">
         <div className="container">
           <div className="notification is-danger is-light">
-            <p>Patient not found.</p>
+            <p>{t('patient.info.patientNotFound')}</p>
           </div>
         </div>
       </section>

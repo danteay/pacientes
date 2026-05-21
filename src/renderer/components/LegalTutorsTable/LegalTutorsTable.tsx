@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { LegalTutor } from '../../../types/legal-tutor';
 import { Button } from '../atoms/Button/Button';
 import './LegalTutorsTable.styles.scss';
@@ -14,6 +15,7 @@ export const LegalTutorsTable: React.FC<LegalTutorsTableProps> = ({
   onChange,
   readOnly = false,
 }) => {
+  const { t } = useTranslation();
   const [localTutors, setLocalTutors] = useState<Partial<LegalTutor>[]>(tutors);
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export const LegalTutorsTable: React.FC<LegalTutorsTableProps> = ({
   if (readOnly && localTutors.length === 0) {
     return (
       <div className="notification is-info is-light">
-        <p>No legal tutors registered.</p>
+        <p>{t('legalTutor.noTutorsRegistered')}</p>
       </div>
     );
   }
@@ -61,20 +63,20 @@ export const LegalTutorsTable: React.FC<LegalTutorsTableProps> = ({
         <table className="table is-fullwidth is-striped">
           <thead>
             <tr>
-              <th>Full Name *</th>
-              <th>Phone Number *</th>
-              <th>Relation *</th>
-              <th>Email *</th>
-              <th>Birth Date *</th>
-              <th>Address</th>
-              {!readOnly && <th>Actions</th>}
+              <th>{t('legalTutor.fullName')}</th>
+              <th>{t('legalTutor.phoneNumber')}</th>
+              <th>{t('legalTutor.relation')}</th>
+              <th>{t('legalTutor.email')}</th>
+              <th>{t('legalTutor.birthDate')}</th>
+              <th>{t('legalTutor.address')}</th>
+              {!readOnly && <th>{t('legalTutor.actions')}</th>}
             </tr>
           </thead>
           <tbody>
             {localTutors.length === 0 && !readOnly ? (
               <tr>
                 <td colSpan={7} className="has-text-centered has-text-grey">
-                  No legal tutors added. Click "Add Tutor" to add one.
+                  {t('legalTutor.noTutorsAdded')}
                 </td>
               </tr>
             ) : (
@@ -115,7 +117,7 @@ export const LegalTutorsTable: React.FC<LegalTutorsTableProps> = ({
                         type="text"
                         value={tutor.relation || ''}
                         onChange={(e) => handleChange(index, 'relation', e.target.value)}
-                        placeholder="e.g., Parent, Guardian"
+                        placeholder={t('legalTutor.relationPlaceholder')}
                         required
                       />
                     )}
@@ -164,9 +166,9 @@ export const LegalTutorsTable: React.FC<LegalTutorsTableProps> = ({
                         variant="danger"
                         size="small"
                         onClick={() => handleRemove(index)}
-                        title="Remove tutor"
+                        title={t('legalTutor.removeTutor')}
                       >
-                        Remove
+                        {t('legalTutor.remove')}
                       </Button>
                     </td>
                   )}
@@ -180,7 +182,7 @@ export const LegalTutorsTable: React.FC<LegalTutorsTableProps> = ({
       {!readOnly && (
         <div className="has-text-right" style={{ marginTop: '1rem' }}>
           <Button variant="success" onClick={handleAdd} size="small">
-            + Add Tutor
+            {t('legalTutor.addTutor')}
           </Button>
         </div>
       )}

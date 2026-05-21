@@ -1,82 +1,55 @@
-import React, { Component } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import PatientForm from '../../components/PatientForm/PatientForm';
 import type { Patient } from '../../../types/patient';
-
-interface EditPatientProps {
-  patientId?: string;
-}
-
-interface EditPatientState {
-  patient: Patient | null;
-  isLoading: boolean;
-}
-
-class EditPatientBase extends Component<
-  EditPatientProps & { navigate: ReturnType<typeof useNavigate> },
-  EditPatientState
-> {
-  constructor(props: EditPatientProps & { navigate: ReturnType<typeof useNavigate> }) {
-    super(props);
-    this.state = {
-      patient: null,
-      isLoading: true,
-    };
-  }
-
-  async componentDidMount() {
-    const { patientId } = this.props;
-
-    if (patientId && patientId !== 'new') {
-      try {
-        const result = await window.api.patient.getById(parseInt(patientId));
-        if (result.success && result.data) {
-          this.setState({ patient: result.data, isLoading: false });
-        } else {
-          console.error('Failed to load patient:', result.error);
-          this.setState({ isLoading: false });
-        }
-      } catch (error) {
-        console.error('Error loading patient:', error);
-        this.setState({ isLoading: false });
-      }
-    } else {
-      this.setState({ isLoading: false });
-    }
-  }
-
-  handleSave = () => {
-    this.props.navigate('/');
-  };
-
-  handleCancel = () => {
-    this.props.navigate('/');
-  };
-
-  render() {
-    const { patient, isLoading } = this.state;
-
-    if (isLoading) {
-      return (
-        <section className="section">
-          <div className="container">
-            <div className="notification is-info is-light">
-              <p>Loading patient information...</p>
-            </div>
-          </div>
-        </section>
-      );
-    }
-
-    return <PatientForm patient={patient} onSave={this.handleSave} onCancel={this.handleCancel} />;
-  }
-}
 
 const EditPatient: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  return <EditPatientBase patientId={patientId} navigate={navigate} />;
+  useEffect(() => {
+    const loadPatient = async () => {
+      if (patientId && patientId !== 'new') {
+        try {
+          const result = await window.api.patient.getById(parseInt(patientId));
+          if (result.success && result.data) {
+            setPatient(result.data);
+          } else {
+            console.error('Failed to load patient:', result.error);
+          }
+        } catch (error) {
+          console.error('Error loading patient:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      } else {
+        setIsLoading(false);
+      }
+    };
+
+    loadPatient();
+  }, [patientId]);
+
+  const handleSave = () => navigate('/');
+  const handleCancel = () => navigate('/');
+
+  if (isLoading) {
+    return (
+      <section className="section">
+        <div className="container">
+          <div className="notification is-info is-light">
+            <p>{t('patient.form.loadingPatient')}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return <PatientForm patient={patient} onSave={handleSave} onCancel={handleCancel} />;
 };
 
 export default EditPatient;

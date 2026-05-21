@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Patient, PatientStatus } from '../../../types/patient';
 import { usePatients } from '../../hooks/usePatients';
 import { useNotification } from '../../context/NotificationContext';
@@ -6,13 +7,6 @@ import { SearchBar } from '../molecules/SearchBar/SearchBar';
 import { Button } from '../atoms/Button/Button';
 import { LoadingSpinner } from '../atoms/LoadingSpinner/LoadingSpinner';
 import './PatientList.styles.scss';
-
-/**
- * Patient List Component
- *
- * Functional component using hooks for state management
- * Follows React best practices and composition patterns
- */
 
 interface PatientListProps {
   onAddPatient: () => void;
@@ -25,6 +19,7 @@ export const PatientList: React.FC<PatientListProps> = ({
   onViewPatient,
   onViewNotes,
 }) => {
+  const { t } = useTranslation();
   const { patients, loading, error, loadPatients, searchPatients } = usePatients();
   const { showError } = useNotification();
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -49,8 +44,6 @@ export const PatientList: React.FC<PatientListProps> = ({
   const handleStatusFilterChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newStatus = e.target.value;
     setStatusFilter(newStatus);
-
-    // Re-run search with new status filter
     const status = newStatus !== 'all' ? newStatus : undefined;
     searchPatients(searchTerm, status);
   };
@@ -70,26 +63,11 @@ export const PatientList: React.FC<PatientListProps> = ({
     }
   };
 
-  const getStatusLabel = (status: PatientStatus): string => {
-    switch (status) {
-      case PatientStatus.ACTIVE:
-        return 'Active';
-      case PatientStatus.PAUSED:
-        return 'Paused';
-      case PatientStatus.MEDICAL_DISCHARGE:
-        return 'Medical Discharge';
-      case PatientStatus.ABANDONED:
-        return 'Abandoned';
-      default:
-        return status;
-    }
-  };
-
   if (loading && patients.length === 0) {
     return (
       <section className="section">
         <div className="container">
-          <LoadingSpinner message="Loading patients..." />
+          <LoadingSpinner message={t('patient.list.loadingPatients')} />
         </div>
       </section>
     );
@@ -103,7 +81,7 @@ export const PatientList: React.FC<PatientListProps> = ({
             <div className="column is-one-quarter">
               <div className="field">
                 <label className="label" htmlFor="statusFilter">
-                  Filter by Status
+                  {t('patient.list.filterByStatus')}
                 </label>
                 <div className="control">
                   <div className="select is-fullwidth">
@@ -112,11 +90,19 @@ export const PatientList: React.FC<PatientListProps> = ({
                       value={statusFilter}
                       onChange={handleStatusFilterChange}
                     >
-                      <option value="all">All Statuses</option>
-                      <option value={PatientStatus.ACTIVE}>Active</option>
-                      <option value={PatientStatus.PAUSED}>Paused</option>
-                      <option value={PatientStatus.MEDICAL_DISCHARGE}>Medical Discharge</option>
-                      <option value={PatientStatus.ABANDONED}>Abandoned</option>
+                      <option value="all">{t('patient.list.allStatuses')}</option>
+                      <option value={PatientStatus.ACTIVE}>
+                        {t('enums.patientStatus.active')}
+                      </option>
+                      <option value={PatientStatus.PAUSED}>
+                        {t('enums.patientStatus.paused')}
+                      </option>
+                      <option value={PatientStatus.MEDICAL_DISCHARGE}>
+                        {t('enums.patientStatus.medical_discharge')}
+                      </option>
+                      <option value={PatientStatus.ABANDONED}>
+                        {t('enums.patientStatus.abandoned')}
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -125,12 +111,12 @@ export const PatientList: React.FC<PatientListProps> = ({
             <div className="column is-half">
               <div className="field">
                 <label className="label" htmlFor="search">
-                  Search Patients
+                  {t('patient.list.searchPatients')}
                 </label>
                 <div className="control">
                   <SearchBar
                     onSearch={handleSearch}
-                    placeholder="Search by name, email, or phone..."
+                    placeholder={t('patient.list.searchPlaceholder')}
                   />
                 </div>
               </div>
@@ -138,11 +124,11 @@ export const PatientList: React.FC<PatientListProps> = ({
             <div className="column">
               <div className="field">
                 <label className="label" style={{ visibility: 'hidden' }}>
-                  Action
+                  {t('common.actions')}
                 </label>
                 <div className="control">
                   <Button variant="primary" onClick={onAddPatient} isFullWidth>
-                    + Add Patient
+                    {t('patient.list.addPatient')}
                   </Button>
                 </div>
               </div>
@@ -154,8 +140,8 @@ export const PatientList: React.FC<PatientListProps> = ({
           <div className="notification is-warning is-light">
             <p>
               {statusFilter === 'all' && !searchTerm
-                ? 'No patients found. Click the "Add Patient" button to add a new patient.'
-                : 'No patients match the selected filters.'}
+                ? t('patient.list.noPatients')
+                : t('patient.list.noPatientsFiltered')}
             </p>
           </div>
         ) : (
@@ -163,12 +149,12 @@ export const PatientList: React.FC<PatientListProps> = ({
             <table className="table is-fullwidth is-striped is-hoverable">
               <thead>
                 <tr>
-                  <th>Name</th>
-                  <th>Age</th>
-                  <th>Phone Number</th>
-                  <th>Email</th>
-                  <th>Status</th>
-                  <th>Actions</th>
+                  <th>{t('patient.list.name')}</th>
+                  <th>{t('patient.list.age')}</th>
+                  <th>{t('patient.list.phoneNumber')}</th>
+                  <th>{t('patient.list.email')}</th>
+                  <th>{t('patient.list.status')}</th>
+                  <th>{t('patient.list.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -180,7 +166,7 @@ export const PatientList: React.FC<PatientListProps> = ({
                     <td>{patient.email}</td>
                     <td>
                       <span className={`tag ${getStatusBadgeClass(patient.status)}`}>
-                        {getStatusLabel(patient.status)}
+                        {t(`enums.patientStatus.${patient.status}`)}
                       </span>
                     </td>
                     <td>
@@ -189,17 +175,17 @@ export const PatientList: React.FC<PatientListProps> = ({
                           variant="primary"
                           size="small"
                           onClick={() => onViewPatient(patient)}
-                          title="View patient information"
+                          title={t('patient.list.infoTitle')}
                         >
-                          Info
+                          {t('patient.list.info')}
                         </Button>
                         <Button
                           variant="info"
                           size="small"
                           onClick={() => onViewNotes(patient)}
-                          title="View notes"
+                          title={t('patient.list.notesTitle')}
                         >
-                          Notes
+                          {t('patient.list.notes')}
                         </Button>
                       </div>
                     </td>

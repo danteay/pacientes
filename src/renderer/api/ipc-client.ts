@@ -7,6 +7,7 @@ import {
   EmergencyContactUpdateInput,
 } from '../../types/emergency-contact';
 import { LegalTutor, LegalTutorCreateInput, LegalTutorUpdateInput } from '../../types/legal-tutor';
+import { Attachment, AttachmentCreateInput, AttachmentUpdateInput } from '../../types/attachment';
 
 /**
  * IPC Client
@@ -54,6 +55,13 @@ declare global {
         update: (tutorData: LegalTutorUpdateInput) => Promise<ApiResponse<LegalTutor>>;
         delete: (id: number) => Promise<ApiResponse>;
       };
+      attachment: {
+        create: (attachmentData: AttachmentCreateInput) => Promise<ApiResponse<Attachment>>;
+        getByPatientId: (patientId: number) => Promise<ApiResponse<Attachment[]>>;
+        getById: (id: number) => Promise<ApiResponse<Attachment>>;
+        update: (attachmentData: AttachmentUpdateInput) => Promise<ApiResponse<Attachment>>;
+        delete: (id: number) => Promise<ApiResponse>;
+      };
       backup: {
         export: () => Promise<ApiResponse>;
         import: () => Promise<
@@ -62,10 +70,14 @@ declare global {
             notes: number;
             emergencyContacts: number;
             legalTutors: number;
+            attachments: number;
           }>
         >;
         onImportProgress: (callback: (progress: unknown) => void) => void;
         removeImportProgressListener: () => void;
+      };
+      shell: {
+        openExternal: (url: string) => Promise<ApiResponse>;
       };
     };
   }
@@ -185,6 +197,7 @@ export class IpcClient {
       notes: number;
       emergencyContacts: number;
       legalTutors: number;
+      attachments: number;
     }>
   > {
     return window.api.backup.import();

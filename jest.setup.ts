@@ -1,4 +1,8 @@
 import '@testing-library/jest-dom';
+import i18n from './src/renderer/i18n';
+
+// Force English in tests so assertions stay stable regardless of detected locale.
+void i18n.changeLanguage('en');
 
 // Mock window.api for renderer tests
 global.window = Object.create(window);

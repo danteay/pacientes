@@ -1,4 +1,5 @@
-import React, { Component } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Patient } from '../../../types/patient';
 import { MaritalStatus, PatientStatus, Gender, SexualOrientation } from '../../../types/patient';
 import type { EmergencyContact } from '../../../types/emergency-contact';
@@ -13,646 +14,598 @@ interface PatientFormProps {
   onCancel: () => void;
 }
 
-interface PatientFormState {
-  formData: Partial<Patient>;
-  emergencyContacts: Partial<EmergencyContact>[];
-  legalTutors: Partial<LegalTutor>[];
-  isLoadingContacts: boolean;
-  isLoadingTutors: boolean;
-}
+const INITIAL_FORM_DATA: Partial<Patient> = {
+  name: '',
+  age: 0,
+  email: '',
+  phoneNumber: '',
+  birthDate: '',
+  maritalStatus: MaritalStatus.NOT_SPECIFIED,
+  gender: Gender.NOT_SPECIFIED,
+  sexualOrientation: SexualOrientation.PREFER_NOT_TO_SAY,
+  educationalLevel: '',
+  profession: '',
+  livesWith: '',
+  children: 0,
+  previousPsychologicalExperience: '',
+  firstAppointmentDate: '',
+  status: PatientStatus.ACTIVE,
+};
 
-class PatientForm extends Component<PatientFormProps, PatientFormState> {
-  constructor(props: PatientFormProps) {
-    super(props);
-    this.state = {
-      formData: {
-        name: '',
-        age: 0,
-        email: '',
-        phoneNumber: '',
-        birthDate: '',
-        maritalStatus: MaritalStatus.NOT_SPECIFIED,
-        gender: Gender.NOT_SPECIFIED,
-        sexualOrientation: SexualOrientation.PREFER_NOT_TO_SAY,
-        educationalLevel: '',
-        profession: '',
-        livesWith: '',
-        children: 0,
-        previousPsychologicalExperience: '',
-        firstAppointmentDate: '',
-        status: PatientStatus.ACTIVE,
-      },
-      emergencyContacts: [],
-      legalTutors: [],
-      isLoadingContacts: false,
-      isLoadingTutors: false,
+const PatientForm: React.FC<PatientFormProps> = ({ patient, onSave, onCancel }) => {
+  const { t } = useTranslation();
+  const [formData, setFormData] = useState<Partial<Patient>>(INITIAL_FORM_DATA);
+  const [emergencyContacts, setEmergencyContacts] = useState<Partial<EmergencyContact>[]>([]);
+  const [legalTutors, setLegalTutors] = useState<Partial<LegalTutor>[]>([]);
+
+  useEffect(() => {
+    const loadRelatedData = async () => {
+      if (!patient?.id) {
+        setEmergencyContacts([]);
+        setLegalTutors([]);
+        return;
+      }
+
+      try {
+        const contactsResponse = await window.api.emergencyContact.getByPatientId(patient.id);
+        if (contactsResponse.success && contactsResponse.data) {
+          setEmergencyContacts(contactsResponse.data);
+        }
+      } catch (error) {
+        console.error('Error loading emergency contacts:', error);
+      }
+
+      try {
+        const tutorsResponse = await window.api.legalTutor.getByPatientId(patient.id);
+        if (tutorsResponse.success && tutorsResponse.data) {
+          setLegalTutors(tutorsResponse.data);
+        }
+      } catch (error) {
+        console.error('Error loading legal tutors:', error);
+      }
     };
-  }
 
-  async componentDidMount() {
-    if (this.props.patient) {
-      this.setState({ formData: this.props.patient });
-      await this.loadEmergencyContacts();
-      await this.loadLegalTutors();
+    if (patient) {
+      setFormData(patient);
+      loadRelatedData();
     }
-  }
+  }, [patient]);
 
-  async componentDidUpdate(prevProps: PatientFormProps) {
-    if (this.props.patient !== prevProps.patient && this.props.patient) {
-      this.setState({ formData: this.props.patient });
-      await this.loadEmergencyContacts();
-      await this.loadLegalTutors();
-    }
-  }
-
-  loadEmergencyContacts = async () => {
-    if (!this.props.patient?.id) {
-      this.setState({ emergencyContacts: [] });
-      return;
-    }
-
-    try {
-      this.setState({ isLoadingContacts: true });
-      const response = await window.api.emergencyContact.getByPatientId(this.props.patient.id);
-      if (response.success && response.data) {
-        this.setState({ emergencyContacts: response.data });
-      }
-    } catch (error) {
-      console.error('Error loading emergency contacts:', error);
-    } finally {
-      this.setState({ isLoadingContacts: false });
-    }
-  };
-
-  loadLegalTutors = async () => {
-    if (!this.props.patient?.id) {
-      this.setState({ legalTutors: [] });
-      return;
-    }
-
-    try {
-      this.setState({ isLoadingTutors: true });
-      const response = await window.api.legalTutor.getByPatientId(this.props.patient.id);
-      if (response.success && response.data) {
-        this.setState({ legalTutors: response.data });
-      }
-    } catch (error) {
-      console.error('Error loading legal tutors:', error);
-    } finally {
-      this.setState({ isLoadingTutors: false });
-    }
-  };
-
-  handleChange = (
+  const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    this.setState((prevState) => ({
-      formData: {
-        ...prevState.formData,
-        [name]: name === 'age' || name === 'children' ? Number(value) : value,
-      },
+    setFormData((prev) => ({
+      ...prev,
+      [name]: name === 'age' || name === 'children' ? Number(value) : value,
     }));
   };
 
-  handleEmergencyContactsChange = (contacts: Partial<EmergencyContact>[]) => {
-    this.setState({ emergencyContacts: contacts });
+  const saveEmergencyContacts = async (patientId: number) => {
+    const existingResponse = await window.api.emergencyContact.getByPatientId(patientId);
+    const existingContacts = existingResponse.success ? existingResponse.data || [] : [];
+
+    const contactsToDelete = existingContacts.filter(
+      (existing) => !emergencyContacts.find((contact) => contact.id === existing.id)
+    );
+
+    for (const contact of contactsToDelete) {
+      if (contact.id) {
+        await window.api.emergencyContact.delete(contact.id);
+      }
+    }
+
+    for (const contact of emergencyContacts) {
+      if (!contact.fullName || !contact.phoneNumber || !contact.email || !contact.relation) {
+        continue;
+      }
+
+      if (contact.id) {
+        await window.api.emergencyContact.update({
+          id: contact.id,
+          ...contact,
+          patientId,
+        });
+      } else {
+        await window.api.emergencyContact.create({
+          ...contact,
+          patientId,
+          fullName: contact.fullName,
+          phoneNumber: contact.phoneNumber,
+          email: contact.email,
+          relation: contact.relation,
+        });
+      }
+    }
   };
 
-  handleLegalTutorsChange = (tutors: Partial<LegalTutor>[]) => {
-    this.setState({ legalTutors: tutors });
+  const saveLegalTutors = async (patientId: number) => {
+    const existingResponse = await window.api.legalTutor.getByPatientId(patientId);
+    const existingTutors = existingResponse.success ? existingResponse.data || [] : [];
+
+    const tutorsToDelete = existingTutors.filter(
+      (existing) => !legalTutors.find((tutor) => tutor.id === existing.id)
+    );
+
+    for (const tutor of tutorsToDelete) {
+      if (tutor.id) {
+        await window.api.legalTutor.delete(tutor.id);
+      }
+    }
+
+    for (const tutor of legalTutors) {
+      if (
+        !tutor.fullName ||
+        !tutor.phoneNumber ||
+        !tutor.email ||
+        !tutor.relation ||
+        !tutor.birthDate
+      ) {
+        continue;
+      }
+
+      if (tutor.id) {
+        await window.api.legalTutor.update({
+          id: tutor.id,
+          ...tutor,
+          patientId,
+        });
+      } else {
+        await window.api.legalTutor.create({
+          ...tutor,
+          patientId,
+          fullName: tutor.fullName,
+          phoneNumber: tutor.phoneNumber,
+          email: tutor.email,
+          relation: tutor.relation,
+          birthDate: tutor.birthDate,
+        });
+      }
+    }
   };
 
-  handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     try {
-      // First, save the patient
       const result =
-        this.props.patient && this.props.patient.id
-          ? await window.api.patient.update({ id: this.props.patient.id, ...this.state.formData })
-          : await window.api.patient.create(this.state.formData as Patient);
+        patient && patient.id
+          ? await window.api.patient.update({ id: patient.id, ...formData })
+          : await window.api.patient.create(formData as Patient);
 
       if (!result.success) {
-        alert('Failed to save patient: ' + result.error);
+        alert(`${t('patient.form.savePatientFailed')}: ${result.error}`);
         return;
       }
 
-      // Get the patient ID (either from update or create)
       const patientId = result.data?.id;
       if (!patientId) {
-        alert('Failed to get patient ID');
+        alert(t('patient.form.getPatientIdFailed'));
         return;
       }
 
-      // Save emergency contacts
-      await this.saveEmergencyContacts(patientId);
+      await saveEmergencyContacts(patientId);
+      await saveLegalTutors(patientId);
 
-      // Save legal tutors
-      await this.saveLegalTutors(patientId);
-
-      this.props.onSave();
+      onSave();
     } catch (error) {
       console.error('Error saving patient:', error);
-      alert('Failed to save patient');
+      alert(t('patient.form.savePatientFailed'));
     }
   };
 
-  saveEmergencyContacts = async (patientId: number) => {
-    try {
-      // Get existing contacts for this patient
-      const existingResponse = await window.api.emergencyContact.getByPatientId(patientId);
-      const existingContacts = existingResponse.success ? existingResponse.data || [] : [];
+  return (
+    <section className="section">
+      <div className="container">
+        <div className="box">
+          <div className="level">
+            <div className="level-left">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="button is-light"
+                title={t('patient.form.backToList')}
+              >
+                <span>{t('common.back')}</span>
+              </button>
+            </div>
+            <div className="level-item">
+              <h2 className="title is-4">
+                {patient ? t('patient.form.editTitle') : t('patient.form.addTitle')}
+              </h2>
+            </div>
+          </div>
+        </div>
 
-      // Delete contacts that were removed (exist in DB but not in state)
-      const contactsToDelete = existingContacts.filter(
-        (existing) => !this.state.emergencyContacts.find((contact) => contact.id === existing.id)
-      );
-
-      for (const contact of contactsToDelete) {
-        if (contact.id) {
-          await window.api.emergencyContact.delete(contact.id);
-        }
-      }
-
-      // Create or update contacts
-      for (const contact of this.state.emergencyContacts) {
-        // Skip empty contacts
-        if (!contact.fullName || !contact.phoneNumber || !contact.email || !contact.relation) {
-          continue;
-        }
-
-        if (contact.id) {
-          // Update existing contact
-          await window.api.emergencyContact.update({
-            id: contact.id,
-            ...contact,
-            patientId,
-          });
-        } else {
-          // Create new contact
-          await window.api.emergencyContact.create({
-            ...contact,
-            patientId,
-            fullName: contact.fullName,
-            phoneNumber: contact.phoneNumber,
-            email: contact.email,
-            relation: contact.relation,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error saving emergency contacts:', error);
-      throw error;
-    }
-  };
-
-  saveLegalTutors = async (patientId: number) => {
-    try {
-      // Get existing tutors for this patient
-      const existingResponse = await window.api.legalTutor.getByPatientId(patientId);
-      const existingTutors = existingResponse.success ? existingResponse.data || [] : [];
-
-      // Delete tutors that were removed (exist in DB but not in state)
-      const tutorsToDelete = existingTutors.filter(
-        (existing) => !this.state.legalTutors.find((tutor) => tutor.id === existing.id)
-      );
-
-      for (const tutor of tutorsToDelete) {
-        if (tutor.id) {
-          await window.api.legalTutor.delete(tutor.id);
-        }
-      }
-
-      // Create or update tutors
-      for (const tutor of this.state.legalTutors) {
-        // Skip empty tutors - birthDate is now required
-        if (
-          !tutor.fullName ||
-          !tutor.phoneNumber ||
-          !tutor.email ||
-          !tutor.relation ||
-          !tutor.birthDate
-        ) {
-          continue;
-        }
-
-        if (tutor.id) {
-          // Update existing tutor
-          await window.api.legalTutor.update({
-            id: tutor.id,
-            ...tutor,
-            patientId,
-          });
-        } else {
-          // Create new tutor
-          await window.api.legalTutor.create({
-            ...tutor,
-            patientId,
-            fullName: tutor.fullName,
-            phoneNumber: tutor.phoneNumber,
-            email: tutor.email,
-            relation: tutor.relation,
-            birthDate: tutor.birthDate,
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Error saving legal tutors:', error);
-      throw error;
-    }
-  };
-
-  render() {
-    const { patient, onCancel } = this.props;
-    const { formData } = this.state;
-
-    return (
-      <section className="section">
-        <div className="container">
+        <form onSubmit={handleSubmit}>
           <div className="box">
-            <div className="level">
-              <div className="level-left">
-                <button
-                  type="button"
-                  onClick={onCancel}
-                  className="button is-light"
-                  title="Back to patient list"
-                >
-                  <span>← Back</span>
+            <div className="columns">
+              <div className="column">
+                <div className="field">
+                  <label className="label" htmlFor="name">
+                    {t('patient.form.name')}
+                  </label>
+                  <div className="control">
+                    <input
+                      className="input"
+                      type="text"
+                      id="name"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="column">
+                <div className="field">
+                  <label className="label" htmlFor="age">
+                    {t('patient.form.age')}
+                  </label>
+                  <div className="control">
+                    <input
+                      className="input"
+                      type="number"
+                      id="age"
+                      name="age"
+                      min="1"
+                      max="150"
+                      value={formData.age}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="columns">
+              <div className="column">
+                <div className="field">
+                  <label className="label" htmlFor="email">
+                    {t('patient.form.email')}
+                  </label>
+                  <div className="control">
+                    <input
+                      className="input"
+                      type="email"
+                      id="email"
+                      name="email"
+                      value={formData.email}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="column">
+                <div className="field">
+                  <label className="label" htmlFor="phoneNumber">
+                    {t('patient.form.phoneNumber')}
+                  </label>
+                  <div className="control">
+                    <input
+                      className="input"
+                      type="tel"
+                      id="phoneNumber"
+                      name="phoneNumber"
+                      value={formData.phoneNumber}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="columns">
+              <div className="column">
+                <div className="field">
+                  <label className="label" htmlFor="birthDate">
+                    {t('patient.form.birthDate')}
+                  </label>
+                  <div className="control">
+                    <input
+                      className="input"
+                      type="date"
+                      id="birthDate"
+                      name="birthDate"
+                      value={formData.birthDate}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="column">
+                <div className="field">
+                  <label className="label" htmlFor="gender">
+                    {t('patient.form.gender')}
+                  </label>
+                  <div className="control">
+                    <div className="select is-fullwidth">
+                      <select
+                        id="gender"
+                        name="gender"
+                        value={formData.gender}
+                        onChange={handleChange}
+                        required
+                      >
+                        <option value="">{t('patient.form.selectGender')}</option>
+                        <option value={Gender.MALE}>{t('enums.gender.male')}</option>
+                        <option value={Gender.FEMALE}>{t('enums.gender.female')}</option>
+                        <option value={Gender.OTHER}>{t('enums.gender.other')}</option>
+                        <option value={Gender.PREFER_NOT_TO_SAY}>
+                          {t('enums.gender.prefer_not_to_say')}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="columns">
+              <div className="column">
+                <div className="field">
+                  <label className="label" htmlFor="sexualOrientation">
+                    {t('patient.form.sexualOrientation')}
+                  </label>
+                  <div className="control">
+                    <div className="select is-fullwidth">
+                      <select
+                        id="sexualOrientation"
+                        name="sexualOrientation"
+                        value={formData.sexualOrientation}
+                        onChange={handleChange}
+                        required
+                      >
+                        <option value={SexualOrientation.PREFER_NOT_TO_SAY}>
+                          {t('enums.sexualOrientation.prefer_not_to_say')}
+                        </option>
+                        <option value={SexualOrientation.HETEROSEXUAL}>
+                          {t('enums.sexualOrientation.heterosexual')}
+                        </option>
+                        <option value={SexualOrientation.HOMOSEXUAL}>
+                          {t('enums.sexualOrientation.homosexual')}
+                        </option>
+                        <option value={SexualOrientation.BISEXUAL}>
+                          {t('enums.sexualOrientation.bisexual')}
+                        </option>
+                        <option value={SexualOrientation.PANSEXUAL}>
+                          {t('enums.sexualOrientation.pansexual')}
+                        </option>
+                        <option value={SexualOrientation.ASEXUAL}>
+                          {t('enums.sexualOrientation.asexual')}
+                        </option>
+                        <option value={SexualOrientation.OTHER}>
+                          {t('enums.sexualOrientation.other')}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="column">
+                <div className="field">
+                  <label className="label" htmlFor="maritalStatus">
+                    {t('patient.form.maritalStatus')}
+                  </label>
+                  <div className="control">
+                    <div className="select is-fullwidth">
+                      <select
+                        id="maritalStatus"
+                        name="maritalStatus"
+                        value={formData.maritalStatus}
+                        onChange={handleChange}
+                        required
+                      >
+                        <option value="">{t('patient.form.selectMaritalStatus')}</option>
+                        <option value={MaritalStatus.SINGLE}>
+                          {t('enums.maritalStatus.single')}
+                        </option>
+                        <option value={MaritalStatus.MARRIED}>
+                          {t('enums.maritalStatus.married')}
+                        </option>
+                        <option value={MaritalStatus.DIVORCED}>
+                          {t('enums.maritalStatus.divorced')}
+                        </option>
+                        <option value={MaritalStatus.WIDOWED}>
+                          {t('enums.maritalStatus.widowed')}
+                        </option>
+                        <option value={MaritalStatus.SEPARATED}>
+                          {t('enums.maritalStatus.separated')}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="columns">
+              <div className="column">
+                <div className="field">
+                  <label className="label" htmlFor="status">
+                    {t('patient.form.patientStatus')}
+                  </label>
+                  <div className="control">
+                    <div className="select is-fullwidth">
+                      <select
+                        id="status"
+                        name="status"
+                        value={formData.status}
+                        onChange={handleChange}
+                        required
+                      >
+                        <option value={PatientStatus.ACTIVE}>
+                          {t('enums.patientStatus.active')}
+                        </option>
+                        <option value={PatientStatus.PAUSED}>
+                          {t('enums.patientStatus.paused')}
+                        </option>
+                        <option value={PatientStatus.MEDICAL_DISCHARGE}>
+                          {t('enums.patientStatus.medical_discharge')}
+                        </option>
+                        <option value={PatientStatus.ABANDONED}>
+                          {t('enums.patientStatus.abandoned')}
+                        </option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="column">
+                <div className="field">
+                  <label className="label" htmlFor="children">
+                    {t('patient.form.numberOfChildren')}
+                  </label>
+                  <div className="control">
+                    <input
+                      className="input"
+                      type="number"
+                      id="children"
+                      name="children"
+                      min="0"
+                      value={formData.children}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="columns">
+              <div className="column">
+                <div className="field">
+                  <label className="label" htmlFor="educationalLevel">
+                    {t('patient.form.educationalLevel')}
+                  </label>
+                  <div className="control">
+                    <input
+                      className="input"
+                      type="text"
+                      id="educationalLevel"
+                      name="educationalLevel"
+                      placeholder={t('patient.form.educationalLevelPlaceholder')}
+                      value={formData.educationalLevel}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="column">
+                <div className="field">
+                  <label className="label" htmlFor="profession">
+                    {t('patient.form.profession')}
+                  </label>
+                  <div className="control">
+                    <input
+                      className="input"
+                      type="text"
+                      id="profession"
+                      name="profession"
+                      value={formData.profession}
+                      onChange={handleChange}
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="field">
+              <label className="label" htmlFor="livesWith">
+                {t('patient.form.livesWith')}
+              </label>
+              <div className="control">
+                <input
+                  className="input"
+                  type="text"
+                  id="livesWith"
+                  name="livesWith"
+                  placeholder={t('patient.form.livesWithPlaceholder')}
+                  value={formData.livesWith}
+                  onChange={handleChange}
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="field">
+              <label className="label" htmlFor="firstAppointmentDate">
+                {t('patient.form.firstAppointmentDate')}
+              </label>
+              <div className="control">
+                <input
+                  className="input"
+                  type="date"
+                  id="firstAppointmentDate"
+                  name="firstAppointmentDate"
+                  value={formData.firstAppointmentDate || ''}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div className="field">
+              <label className="label" htmlFor="previousPsychologicalExperience">
+                {t('patient.form.previousExperience')}
+              </label>
+              <div className="control">
+                <textarea
+                  className="textarea"
+                  id="previousPsychologicalExperience"
+                  name="previousPsychologicalExperience"
+                  rows={4}
+                  placeholder={t('patient.form.previousExperiencePlaceholder')}
+                  value={formData.previousPsychologicalExperience || ''}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div className="field">
+              <label className="label">{t('patient.form.emergencyContacts')}</label>
+              <p className="help">{t('patient.form.emergencyContactsHelp')}</p>
+              <EmergencyContactsTable
+                contacts={emergencyContacts}
+                onChange={setEmergencyContacts}
+              />
+            </div>
+
+            <div className="field">
+              <label className="label">{t('patient.form.legalTutors')}</label>
+              <p className="help">{t('patient.form.legalTutorsHelp')}</p>
+              <LegalTutorsTable tutors={legalTutors} onChange={setLegalTutors} />
+            </div>
+
+            <div className="field is-grouped">
+              <div className="control">
+                <button type="submit" className="button is-primary">
+                  {t('patient.form.savePatient')}
                 </button>
               </div>
-              <div className="level-item">
-                <h2 className="title is-4">{patient ? 'Edit Patient' : 'Add New Patient'}</h2>
+              <div className="control">
+                <button type="button" onClick={onCancel} className="button is-light">
+                  {t('common.cancel')}
+                </button>
               </div>
             </div>
           </div>
-
-          <form onSubmit={this.handleSubmit}>
-            <div className="box">
-              <div className="columns">
-                <div className="column">
-                  <div className="field">
-                    <label className="label" htmlFor="name">
-                      Name *
-                    </label>
-                    <div className="control">
-                      <input
-                        className="input"
-                        type="text"
-                        id="name"
-                        name="name"
-                        value={formData.name}
-                        onChange={this.handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="column">
-                  <div className="field">
-                    <label className="label" htmlFor="age">
-                      Age *
-                    </label>
-                    <div className="control">
-                      <input
-                        className="input"
-                        type="number"
-                        id="age"
-                        name="age"
-                        min="1"
-                        max="150"
-                        value={formData.age}
-                        onChange={this.handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="columns">
-                <div className="column">
-                  <div className="field">
-                    <label className="label" htmlFor="email">
-                      Email *
-                    </label>
-                    <div className="control">
-                      <input
-                        className="input"
-                        type="email"
-                        id="email"
-                        name="email"
-                        value={formData.email}
-                        onChange={this.handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="column">
-                  <div className="field">
-                    <label className="label" htmlFor="phoneNumber">
-                      Phone Number *
-                    </label>
-                    <div className="control">
-                      <input
-                        className="input"
-                        type="tel"
-                        id="phoneNumber"
-                        name="phoneNumber"
-                        value={formData.phoneNumber}
-                        onChange={this.handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="columns">
-                <div className="column">
-                  <div className="field">
-                    <label className="label" htmlFor="birthDate">
-                      Birth Date *
-                    </label>
-                    <div className="control">
-                      <input
-                        className="input"
-                        type="date"
-                        id="birthDate"
-                        name="birthDate"
-                        value={formData.birthDate}
-                        onChange={this.handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="column">
-                  <div className="field">
-                    <label className="label" htmlFor="gender">
-                      Gender *
-                    </label>
-                    <div className="control">
-                      <div className="select is-fullwidth">
-                        <select
-                          id="gender"
-                          name="gender"
-                          value={formData.gender}
-                          onChange={this.handleChange}
-                          required
-                        >
-                          <option value="">Select gender</option>
-                          <option value="male">Male</option>
-                          <option value="female">Female</option>
-                          <option value="other">Other</option>
-                          <option value="prefer_not_to_say">Prefer not to say</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="columns">
-                <div className="column">
-                  <div className="field">
-                    <label className="label" htmlFor="sexualOrientation">
-                      Sexual Orientation *
-                    </label>
-                    <div className="control">
-                      <div className="select is-fullwidth">
-                        <select
-                          id="sexualOrientation"
-                          name="sexualOrientation"
-                          value={formData.sexualOrientation}
-                          onChange={this.handleChange}
-                          required
-                        >
-                          <option value="prefer_not_to_say">Prefer not to say</option>
-                          <option value="heterosexual">Heterosexual</option>
-                          <option value="homosexual">Homosexual</option>
-                          <option value="bisexual">Bisexual</option>
-                          <option value="pansexual">Pansexual</option>
-                          <option value="asexual">Asexual</option>
-                          <option value="other">Other</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="column">
-                  <div className="field">
-                    <label className="label" htmlFor="maritalStatus">
-                      Marital Status *
-                    </label>
-                    <div className="control">
-                      <div className="select is-fullwidth">
-                        <select
-                          id="maritalStatus"
-                          name="maritalStatus"
-                          value={formData.maritalStatus}
-                          onChange={this.handleChange}
-                          required
-                        >
-                          <option value="">Select status</option>
-                          <option value="single">Single</option>
-                          <option value="married">Married</option>
-                          <option value="divorced">Divorced</option>
-                          <option value="widowed">Widowed</option>
-                          <option value="separated">Separated</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="columns">
-                <div className="column">
-                  <div className="field">
-                    <label className="label" htmlFor="status">
-                      Patient Status *
-                    </label>
-                    <div className="control">
-                      <div className="select is-fullwidth">
-                        <select
-                          id="status"
-                          name="status"
-                          value={formData.status}
-                          onChange={this.handleChange}
-                          required
-                        >
-                          <option value="active">Active</option>
-                          <option value="paused">Paused</option>
-                          <option value="medical_discharge">Medical Discharge</option>
-                          <option value="abandoned">Abandoned</option>
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="column">
-                  <div className="field">
-                    <label className="label" htmlFor="children">
-                      Number of Children *
-                    </label>
-                    <div className="control">
-                      <input
-                        className="input"
-                        type="number"
-                        id="children"
-                        name="children"
-                        min="0"
-                        value={formData.children}
-                        onChange={this.handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="columns">
-                <div className="column">
-                  <div className="field">
-                    <label className="label" htmlFor="educationalLevel">
-                      Educational Level *
-                    </label>
-                    <div className="control">
-                      <input
-                        className="input"
-                        type="text"
-                        id="educationalLevel"
-                        name="educationalLevel"
-                        placeholder="e.g., High School, Bachelor's, Master's"
-                        value={formData.educationalLevel}
-                        onChange={this.handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="column">
-                  <div className="field">
-                    <label className="label" htmlFor="profession">
-                      Profession *
-                    </label>
-                    <div className="control">
-                      <input
-                        className="input"
-                        type="text"
-                        id="profession"
-                        name="profession"
-                        value={formData.profession}
-                        onChange={this.handleChange}
-                        required
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="field">
-                <label className="label" htmlFor="livesWith">
-                  Lives With *
-                </label>
-                <div className="control">
-                  <input
-                    className="input"
-                    type="text"
-                    id="livesWith"
-                    name="livesWith"
-                    placeholder="e.g., Alone, Parents, Spouse, Roommates"
-                    value={formData.livesWith}
-                    onChange={this.handleChange}
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="field">
-                <label className="label" htmlFor="firstAppointmentDate">
-                  First Appointment Date
-                </label>
-                <div className="control">
-                  <input
-                    className="input"
-                    type="date"
-                    id="firstAppointmentDate"
-                    name="firstAppointmentDate"
-                    value={formData.firstAppointmentDate || ''}
-                    onChange={this.handleChange}
-                  />
-                </div>
-              </div>
-
-              <div className="field">
-                <label className="label" htmlFor="previousPsychologicalExperience">
-                  Previous Psychological Experience
-                </label>
-                <div className="control">
-                  <textarea
-                    className="textarea"
-                    id="previousPsychologicalExperience"
-                    name="previousPsychologicalExperience"
-                    rows={4}
-                    placeholder="Describe any previous therapy, treatments, or psychological services..."
-                    value={formData.previousPsychologicalExperience || ''}
-                    onChange={this.handleChange}
-                  />
-                </div>
-              </div>
-
-              <div className="field">
-                <label className="label">Emergency Contacts</label>
-                <p className="help">
-                  Add emergency contacts for this patient. Changes will be saved when you save the
-                  patient.
-                </p>
-                <EmergencyContactsTable
-                  contacts={this.state.emergencyContacts}
-                  onChange={this.handleEmergencyContactsChange}
-                />
-              </div>
-
-              <div className="field">
-                <label className="label">Legal Tutors</label>
-                <p className="help">
-                  Add legal tutors for this patient. Changes will be saved when you save the
-                  patient.
-                </p>
-                <LegalTutorsTable
-                  tutors={this.state.legalTutors}
-                  onChange={this.handleLegalTutorsChange}
-                />
-              </div>
-
-              <div className="field is-grouped">
-                <div className="control">
-                  <button type="submit" className="button is-primary">
-                    Save Patient
-                  </button>
-                </div>
-                <div className="control">
-                  <button type="button" onClick={onCancel} className="button is-light">
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </form>
-        </div>
-      </section>
-    );
-  }
-}
+        </form>
+      </div>
+    </section>
+  );
+};
 
 export default PatientForm;

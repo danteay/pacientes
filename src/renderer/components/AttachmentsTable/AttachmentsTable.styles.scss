@@ -1,0 +1,62 @@
+.attachments-table {
+  margin-top: 1rem;
+
+  .table-container {
+    overflow-x: auto;
+  }
+
+  .table {
+    th {
+      white-space: nowrap;
+    }
+
+    td input {
+      width: 100%;
+      min-width: 150px;
+    }
+
+    td {
+      vertical-align: middle;
+    }
+
+    .attachment-link {
+      color: #3273dc;
+      text-decoration: none;
+      word-break: break-word;
+      font-weight: 500;
+      cursor: pointer;
+
+      &:hover {
+        text-decoration: underline;
+        color: #2366d1;
+      }
+
+      &:visited {
+        color: #8b5cf6;
+      }
+
+      &:focus {
+        outline: 2px solid #3273dc;
+        outline-offset: 2px;
+        border-radius: 2px;
+      }
+    }
+  }
+
+  // Modal styles
+  .modal-card {
+    width: 600px;
+    max-width: 90vw;
+  }
+
+  .modal-card-body {
+    .field {
+      margin-bottom: 1.5rem;
+    }
+  }
+
+  .modal-card-foot {
+    justify-content: flex-end;
+    gap: 0.5rem;
+  }
+}

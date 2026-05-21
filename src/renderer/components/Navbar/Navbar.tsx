@@ -1,6 +1,8 @@
-import React, { Component } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import ImportProgressModal from '../ImportProgressModal/ImportProgressModal';
+import { SUPPORTED_LANGUAGES, SupportedLanguage } from '../../i18n';
 import './styles.scss';
 
 interface ImportProgress {
@@ -10,67 +12,50 @@ interface ImportProgress {
   message: string;
 }
 
-interface NavbarState {
-  isMenuActive: boolean;
-  isActionsDropdownActive: boolean;
-  isImportModalActive: boolean;
-  importProgress: ImportProgress | null;
-}
+const Navbar: React.FC = () => {
+  const { t, i18n } = useTranslation();
+  const [isMenuActive, setIsMenuActive] = useState(false);
+  const [isActionsDropdownActive, setIsActionsDropdownActive] = useState(false);
+  const [isLanguageDropdownActive, setIsLanguageDropdownActive] = useState(false);
+  const [isImportModalActive, setIsImportModalActive] = useState(false);
+  const [importProgress, setImportProgress] = useState<ImportProgress | null>(null);
 
-class Navbar extends Component<{}, NavbarState> {
-  constructor(props: {}) {
-    super(props);
-    this.state = {
-      isMenuActive: false,
-      isActionsDropdownActive: false,
-      isImportModalActive: false,
-      importProgress: null,
-    };
-  }
-
-  componentDidMount() {
+  useEffect(() => {
     window.api.backup.onImportProgress((progress: unknown) => {
-      this.setState({ importProgress: progress as ImportProgress });
+      setImportProgress(progress as ImportProgress);
     });
-  }
 
-  componentWillUnmount() {
-    window.api.backup.removeImportProgressListener();
-  }
+    return () => {
+      window.api.backup.removeImportProgressListener();
+    };
+  }, []);
 
-  toggleMenu = () => {
-    this.setState((prevState) => ({
-      isMenuActive: !prevState.isMenuActive,
-    }));
+  const toggleMenu = () => setIsMenuActive((prev) => !prev);
+
+  const closeMenu = () => {
+    setIsMenuActive(false);
+    setIsActionsDropdownActive(false);
+    setIsLanguageDropdownActive(false);
   };
 
-  closeMenu = () => {
-    this.setState({ isMenuActive: false, isActionsDropdownActive: false });
+  const toggleActionsDropdown = () => setIsActionsDropdownActive((prev) => !prev);
+
+  const toggleLanguageDropdown = () => setIsLanguageDropdownActive((prev) => !prev);
+
+  const handleLanguageChange = (language: SupportedLanguage) => {
+    i18n.changeLanguage(language);
+    setIsLanguageDropdownActive(false);
   };
 
-  toggleActionsDropdown = () => {
-    this.setState((prevState) => ({
-      isActionsDropdownActive: !prevState.isActionsDropdownActive,
-    }));
-  };
-
-  handleImport = async () => {
-    this.setState({
-      isActionsDropdownActive: false,
-      isImportModalActive: true,
-      importProgress: null,
-    });
+  const handleImport = async () => {
+    setIsActionsDropdownActive(false);
+    setIsImportModalActive(true);
+    setImportProgress(null);
 
     try {
       const result = await window.api.backup.import();
 
-      // Debug logging
-      console.log('[DEBUG] Navbar: Import result received:', result);
-
       if (result.success) {
-        console.log('Import successful:', result.data);
-        // Keep modal open to show completion
-        // Optionally show success message with stats
         if (result.data) {
           const { patients, notes, emergencyContacts } = result.data;
           console.log(
@@ -78,103 +63,116 @@ class Navbar extends Component<{}, NavbarState> {
           );
         }
       } else {
-        console.error('Import failed:', result.error);
-        alert(`Import failed: ${result.error || 'Unknown error'}`);
-        this.setState({ isImportModalActive: false });
+        const errorMsg = result.error || t('errors.unknownError');
+        alert(t('import.importFailed', { error: errorMsg }));
+        setIsImportModalActive(false);
       }
     } catch (error) {
-      console.error('Import error:', error);
-      alert(`Import error: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      this.setState({ isImportModalActive: false });
+      const errorMsg = error instanceof Error ? error.message : t('errors.unknownError');
+      alert(t('import.importError', { error: errorMsg }));
+      setIsImportModalActive(false);
     }
   };
 
-  handleExport = async () => {
-    this.setState({ isActionsDropdownActive: false });
+  const handleExport = async () => {
+    setIsActionsDropdownActive(false);
 
     try {
       const result = await window.api.backup.export();
 
       if (result.success) {
-        console.log('Export successful');
-        alert('Database exported successfully!');
+        alert(t('import.exportSuccess'));
       } else {
-        console.error('Export failed:', result.error);
-        alert(`Export failed: ${result.error}`);
+        alert(t('import.exportFailed', { error: result.error || '' }));
       }
     } catch (error) {
-      console.error('Export error:', error);
-      alert(`Export error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      const errorMsg = error instanceof Error ? error.message : t('errors.unknownError');
+      alert(t('import.exportError', { error: errorMsg }));
     }
   };
 
-  closeImportModal = () => {
-    const { importProgress } = this.state;
-
-    // If import completed successfully, reload the page
+  const closeImportModal = () => {
     if (importProgress?.stage === 'complete') {
       window.location.reload();
     }
 
-    this.setState({ isImportModalActive: false, importProgress: null });
+    setIsImportModalActive(false);
+    setImportProgress(null);
   };
 
-  render() {
-    const { isMenuActive, isActionsDropdownActive, isImportModalActive, importProgress } =
-      this.state;
+  const currentLanguage = (i18n.resolvedLanguage || i18n.language || 'es').split('-')[0];
 
-    return (
-      <>
-        <nav className="navbar is-primary" role="navigation" aria-label="main navigation">
-          <div className="navbar-brand">
-            <Link to="/" className="navbar-item" onClick={this.closeMenu}>
-              <strong>Pacientes</strong>
-            </Link>
+  return (
+    <>
+      <nav className="navbar is-primary" role="navigation" aria-label="main navigation">
+        <div className="navbar-brand">
+          <Link to="/" className="navbar-item" onClick={closeMenu}>
+            <strong>{t('navbar.brand')}</strong>
+          </Link>
 
-            <a
-              role="button"
-              className={`navbar-burger ${isMenuActive ? 'is-active' : ''}`}
-              aria-label="menu"
-              aria-expanded={isMenuActive}
-              onClick={this.toggleMenu}
+          <a
+            role="button"
+            className={`navbar-burger ${isMenuActive ? 'is-active' : ''}`}
+            aria-label="menu"
+            aria-expanded={isMenuActive}
+            onClick={toggleMenu}
+          >
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+          </a>
+        </div>
+
+        <div className={`navbar-menu ${isMenuActive ? 'is-active' : ''}`}>
+          <div className="navbar-end">
+            <div
+              className={`navbar-item has-dropdown ${isLanguageDropdownActive ? 'is-active' : ''}`}
             >
-              <span aria-hidden="true"></span>
-              <span aria-hidden="true"></span>
-              <span aria-hidden="true"></span>
-              <span aria-hidden="true"></span>
-            </a>
-          </div>
+              <a className="navbar-link" onClick={toggleLanguageDropdown}>
+                {t('common.language')}: {t(`languages.${currentLanguage}`)}
+              </a>
 
-          <div className={`navbar-menu ${isMenuActive ? 'is-active' : ''}`}>
-            <div className="navbar-end">
-              <div
-                className={`navbar-item has-dropdown ${isActionsDropdownActive ? 'is-active' : ''}`}
-              >
-                <a className="navbar-link" onClick={this.toggleActionsDropdown}>
-                  Actions
+              <div className="navbar-dropdown is-right">
+                {SUPPORTED_LANGUAGES.map((lang) => (
+                  <a
+                    key={lang}
+                    className={`navbar-item ${currentLanguage === lang ? 'is-active' : ''}`}
+                    onClick={() => handleLanguageChange(lang)}
+                  >
+                    {t(`languages.${lang}`)}
+                  </a>
+                ))}
+              </div>
+            </div>
+
+            <div
+              className={`navbar-item has-dropdown ${isActionsDropdownActive ? 'is-active' : ''}`}
+            >
+              <a className="navbar-link" onClick={toggleActionsDropdown}>
+                {t('navbar.actions')}
+              </a>
+
+              <div className="navbar-dropdown is-right">
+                <a className="navbar-item" onClick={handleImport}>
+                  {t('navbar.import')}
                 </a>
-
-                <div className="navbar-dropdown is-right">
-                  <a className="navbar-item" onClick={this.handleImport}>
-                    Importar
-                  </a>
-                  <a className="navbar-item" onClick={this.handleExport}>
-                    Exportar
-                  </a>
-                </div>
+                <a className="navbar-item" onClick={handleExport}>
+                  {t('navbar.export')}
+                </a>
               </div>
             </div>
           </div>
-        </nav>
+        </div>
+      </nav>
 
-        <ImportProgressModal
-          isActive={isImportModalActive}
-          progress={importProgress}
-          onClose={this.closeImportModal}
-        />
-      </>
-    );
-  }
-}
+      <ImportProgressModal
+        isActive={isImportModalActive}
+        progress={importProgress}
+        onClose={closeImportModal}
+      />
+    </>
+  );
+};
 
 export default Navbar;

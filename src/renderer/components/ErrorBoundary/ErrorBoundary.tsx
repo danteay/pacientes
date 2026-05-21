@@ -1,11 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-
-/**
- * Error Boundary Component
- *
- * Catches JavaScript errors in child components,
- * logs errors, and displays a fallback UI
- */
+import i18n from '../../i18n';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -59,10 +53,12 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
         <div className="section">
           <div className="container">
             <div className="notification is-danger">
-              <h2 className="title is-4">Something went wrong</h2>
-              <p className="mb-4">{this.state.error?.message || 'An unexpected error occurred'}</p>
+              <h2 className="title is-4">{i18n.t('errors.somethingWrong')}</h2>
+              <p className="mb-4">
+                {this.state.error?.message || i18n.t('errors.unexpectedError')}
+              </p>
               <button className="button is-primary" onClick={this.handleReset}>
-                Try Again
+                {i18n.t('common.tryAgain')}
               </button>
             </div>
           </div>

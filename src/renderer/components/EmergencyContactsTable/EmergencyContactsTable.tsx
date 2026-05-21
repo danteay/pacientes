@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { EmergencyContact } from '../../../types/emergency-contact';
 import { Button } from '../atoms/Button/Button';
 import './EmergencyContactsTable.styles.scss';
@@ -14,6 +15,7 @@ export const EmergencyContactsTable: React.FC<EmergencyContactsTableProps> = ({
   onChange,
   readOnly = false,
 }) => {
+  const { t } = useTranslation();
   const [localContacts, setLocalContacts] = useState<Partial<EmergencyContact>[]>(contacts);
 
   useEffect(() => {
@@ -49,7 +51,7 @@ export const EmergencyContactsTable: React.FC<EmergencyContactsTableProps> = ({
   if (readOnly && localContacts.length === 0) {
     return (
       <div className="notification is-info is-light">
-        <p>No emergency contacts registered.</p>
+        <p>{t('emergencyContact.noContactsRegistered')}</p>
       </div>
     );
   }
@@ -60,19 +62,19 @@ export const EmergencyContactsTable: React.FC<EmergencyContactsTableProps> = ({
         <table className="table is-fullwidth is-striped">
           <thead>
             <tr>
-              <th>Full Name *</th>
-              <th>Phone Number *</th>
-              <th>Relation *</th>
-              <th>Email *</th>
-              <th>Address</th>
-              {!readOnly && <th>Actions</th>}
+              <th>{t('emergencyContact.fullName')}</th>
+              <th>{t('emergencyContact.phoneNumber')}</th>
+              <th>{t('emergencyContact.relation')}</th>
+              <th>{t('emergencyContact.email')}</th>
+              <th>{t('emergencyContact.address')}</th>
+              {!readOnly && <th>{t('emergencyContact.actions')}</th>}
             </tr>
           </thead>
           <tbody>
             {localContacts.length === 0 && !readOnly ? (
               <tr>
                 <td colSpan={6} className="has-text-centered has-text-grey">
-                  No emergency contacts added. Click "Add Contact" to add one.
+                  {t('emergencyContact.noContactsAdded')}
                 </td>
               </tr>
             ) : (
@@ -113,7 +115,7 @@ export const EmergencyContactsTable: React.FC<EmergencyContactsTableProps> = ({
                         type="text"
                         value={contact.relation || ''}
                         onChange={(e) => handleChange(index, 'relation', e.target.value)}
-                        placeholder="e.g., Mother, Brother, Friend"
+                        placeholder={t('emergencyContact.relationPlaceholder')}
                         required
                       />
                     )}
@@ -149,9 +151,9 @@ export const EmergencyContactsTable: React.FC<EmergencyContactsTableProps> = ({
                         variant="danger"
                         size="small"
                         onClick={() => handleRemove(index)}
-                        title="Remove contact"
+                        title={t('emergencyContact.removeContact')}
                       >
-                        Remove
+                        {t('emergencyContact.remove')}
                       </Button>
                     </td>
                   )}
@@ -165,7 +167,7 @@ export const EmergencyContactsTable: React.FC<EmergencyContactsTableProps> = ({
       {!readOnly && (
         <div className="has-text-right" style={{ marginTop: '1rem' }}>
           <Button variant="success" onClick={handleAdd} size="small">
-            + Add Contact
+            {t('emergencyContact.addContact')}
           </Button>
         </div>
       )}

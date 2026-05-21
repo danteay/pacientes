@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { LoadingSpinner } from '../../components/atoms/LoadingSpinner/LoadingSpinner';
 import { Button } from '../../components/atoms/Button/Button';
 import { useNotification } from '../../context/NotificationContext';
@@ -8,34 +9,39 @@ import { unwrapApiResponse } from '../../api/types';
 import type { Patient } from '../../../types/patient';
 import type { EmergencyContact } from '../../../types/emergency-contact';
 import type { LegalTutor } from '../../../types/legal-tutor';
-import {
-  genderToString,
-  sexualOrientationToString,
-  maritalStatusToString,
-  patientStatusToString,
-  PatientStatus,
-} from '../../../types/patient';
+import type { Attachment } from '../../../types/attachment';
+import { PatientStatus } from '../../../types/patient';
 import { EmergencyContactsTable } from '../../components/EmergencyContactsTable/EmergencyContactsTable';
 import { LegalTutorsTable } from '../../components/LegalTutorsTable/LegalTutorsTable';
+import { AttachmentsTable } from '../../components/AttachmentsTable/AttachmentsTable';
 import './PatientInfo.styles.scss';
-
-/**
- * Patient Info Page
- *
- * Displays comprehensive patient information in read-only mode
- * Provides navigation to edit patient or view notes
- */
 
 const PatientInfo: React.FC = () => {
   const { patientId } = useParams<{ patientId: string }>();
   const navigate = useNavigate();
   const { showError } = useNotification();
+  const { t } = useTranslation();
 
   const [patient, setPatient] = useState<Patient | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [emergencyContacts, setEmergencyContacts] = useState<EmergencyContact[]>([]);
   const [legalTutors, setLegalTutors] = useState<LegalTutor[]>([]);
-  const [activeTab, setActiveTab] = useState<'info' | 'contacts' | 'tutors'>('info');
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [activeTab, setActiveTab] = useState<'info' | 'contacts' | 'tutors' | 'attachments'>(
+    'info'
+  );
+
+  const loadAttachments = async () => {
+    if (!patientId) return;
+    try {
+      const attachmentsResponse = await window.api.attachment.getByPatientId(parseInt(patientId));
+      if (attachmentsResponse.success && attachmentsResponse.data) {
+        setAttachments(attachmentsResponse.data);
+      }
+    } catch (error) {
+      console.error('Error loading attachments:', error);
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -50,7 +56,6 @@ const PatientInfo: React.FC = () => {
         const data = unwrapApiResponse(response);
         setPatient(data);
 
-        // Load emergency contacts
         const contactsResponse = await window.api.emergencyContact.getByPatientId(
           parseInt(patientId)
         );
@@ -58,13 +63,15 @@ const PatientInfo: React.FC = () => {
           setEmergencyContacts(contactsResponse.data);
         }
 
-        // Load legal tutors
         const tutorsResponse = await window.api.legalTutor.getByPatientId(parseInt(patientId));
         if (tutorsResponse.success && tutorsResponse.data) {
           setLegalTutors(tutorsResponse.data);
         }
+
+        await loadAttachments();
       } catch (error) {
-        const errorMessage = error instanceof Error ? error.message : 'Failed to load patient';
+        const errorMessage =
+          error instanceof Error ? error.message : t('errors.failedToLoadPatient');
         showError(errorMessage);
         console.error('Error loading patient:', error);
       } finally {
@@ -73,19 +80,11 @@ const PatientInfo: React.FC = () => {
     };
 
     loadData();
-  }, [patientId, showError]);
+  }, [patientId, showError, t]);
 
-  const handleBack = () => {
-    navigate('/');
-  };
-
-  const handleEdit = () => {
-    navigate(`/patient/edit/${patientId}`);
-  };
-
-  const handleViewNotes = () => {
-    navigate(`/patient/${patientId}/notes`);
-  };
+  const handleBack = () => navigate('/');
+  const handleEdit = () => navigate(`/patient/edit/${patientId}`);
+  const handleViewNotes = () => navigate(`/patient/${patientId}/notes`);
 
   const getStatusBadgeClass = (status: PatientStatus): string => {
     switch (status) {
@@ -103,7 +102,7 @@ const PatientInfo: React.FC = () => {
   };
 
   const formatDate = (dateString: string | undefined): string => {
-    if (!dateString) return 'N/A';
+    if (!dateString) return t('common.notAvailable');
     return new Date(dateString).toLocaleDateString();
   };
 
@@ -111,7 +110,7 @@ const PatientInfo: React.FC = () => {
     return (
       <section className="section">
         <div className="container">
-          <LoadingSpinner message="Loading patient information..." />
+          <LoadingSpinner message={t('patient.info.loadingInfo')} />
         </div>
       </section>
     );
@@ -122,7 +121,7 @@ const PatientInfo: React.FC = () => {
       <section className="section">
         <div className="container">
           <div className="notification is-danger is-light">
-            <p>Patient not found.</p>
+            <p>{t('patient.info.patientNotFound')}</p>
           </div>
         </div>
       </section>
@@ -132,212 +131,213 @@ const PatientInfo: React.FC = () => {
   return (
     <section className="section">
       <div className="container">
-        {/* Header */}
         <div className="box">
           <div className="level">
             <div className="level-left">
-              <Button variant="light" onClick={handleBack} title="Back to patient list">
-                ← Back
+              <Button variant="light" onClick={handleBack} title={t('patient.info.backToList')}>
+                {t('common.back')}
               </Button>
             </div>
             <div className="level-item">
-              <h2 className="title is-4">Patient Information</h2>
+              <h2 className="title is-4">{t('patient.info.headerTitle')}</h2>
             </div>
             <div className="level-right">
               <Button variant="info" onClick={handleViewNotes}>
-                View Notes
+                {t('patient.info.viewNotes')}
               </Button>
             </div>
           </div>
         </div>
 
-        {/* Patient Details */}
         <div className="box">
           <div className="patient-info-header">
             <h3 className="title is-3">{patient.name}</h3>
             <div className="patient-info-header-actions">
               <span className={`tag is-large ${getStatusBadgeClass(patient.status)}`}>
-                {patientStatusToString(patient.status)}
+                {t(`enums.patientStatus.${patient.status}`)}
               </span>
               <Button variant="primary" onClick={handleEdit}>
-                Edit Patient
+                {t('patient.info.editPatient')}
               </Button>
             </div>
           </div>
 
-          {/* Tabs Navigation */}
           <div className="tabs is-boxed">
             <ul>
               <li className={activeTab === 'info' ? 'is-active' : ''}>
                 <a onClick={() => setActiveTab('info')}>
-                  <span>Patient Information</span>
+                  <span>{t('patient.info.tabInfo')}</span>
                 </a>
               </li>
               <li className={activeTab === 'contacts' ? 'is-active' : ''}>
                 <a onClick={() => setActiveTab('contacts')}>
-                  <span>Emergency Contacts</span>
+                  <span>{t('patient.info.tabContacts')}</span>
                 </a>
               </li>
               <li className={activeTab === 'tutors' ? 'is-active' : ''}>
                 <a onClick={() => setActiveTab('tutors')}>
-                  <span>Legal Tutors</span>
+                  <span>{t('patient.info.tabTutors')}</span>
+                </a>
+              </li>
+              <li className={activeTab === 'attachments' ? 'is-active' : ''}>
+                <a onClick={() => setActiveTab('attachments')}>
+                  <span>{t('patient.info.tabAttachments')}</span>
                 </a>
               </li>
             </ul>
           </div>
 
-          {/* Patient Information Tab */}
           {activeTab === 'info' && (
-            <>
-              <div className="content patient-info-content">
-                {/* Basic Information */}
-                <div className="patient-info-section">
-                  <h4 className="title is-5">Basic Information</h4>
-                  <div className="columns is-multiline">
-                    <div className="column is-half">
-                      <div className="field-display">
-                        <label className="label">Age</label>
-                        <p>{patient.age} years old</p>
-                      </div>
-                    </div>
-                    <div className="column is-half">
-                      <div className="field-display">
-                        <label className="label">Birth Date</label>
-                        <p>{formatDate(patient.birthDate)}</p>
-                      </div>
+            <div className="content patient-info-content">
+              <div className="patient-info-section">
+                <h4 className="title is-5">{t('patient.info.basicInfo')}</h4>
+                <div className="columns is-multiline">
+                  <div className="column is-half">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.age')}</label>
+                      <p>{t('patient.info.yearsOld', { age: patient.age })}</p>
                     </div>
                   </div>
-                </div>
-
-                {/* Contact Information */}
-                <div className="patient-info-section">
-                  <h4 className="title is-5">Contact Information</h4>
-                  <div className="columns is-multiline">
-                    <div className="column is-half">
-                      <div className="field-display">
-                        <label className="label">Email</label>
-                        <p>{patient.email}</p>
-                      </div>
-                    </div>
-                    <div className="column is-half">
-                      <div className="field-display">
-                        <label className="label">Phone Number</label>
-                        <p>{patient.phoneNumber}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Personal Information */}
-                <div className="patient-info-section">
-                  <h4 className="title is-5">Personal Information</h4>
-                  <div className="columns is-multiline">
-                    <div className="column is-one-third">
-                      <div className="field-display">
-                        <label className="label">Gender</label>
-                        <p>{genderToString(patient.gender)}</p>
-                      </div>
-                    </div>
-                    <div className="column is-one-third">
-                      <div className="field-display">
-                        <label className="label">Sexual Orientation</label>
-                        <p>{sexualOrientationToString(patient.sexualOrientation)}</p>
-                      </div>
-                    </div>
-                    <div className="column is-one-third">
-                      <div className="field-display">
-                        <label className="label">Marital Status</label>
-                        <p>{maritalStatusToString(patient.maritalStatus)}</p>
-                      </div>
-                    </div>
-                    <div className="column is-one-third">
-                      <div className="field-display">
-                        <label className="label">Number of Children</label>
-                        <p>{patient.children}</p>
-                      </div>
-                    </div>
-                    <div className="column is-one-third">
-                      <div className="field-display">
-                        <label className="label">Lives With</label>
-                        <p>{patient.livesWith}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Professional Information */}
-                <div className="patient-info-section">
-                  <h4 className="title is-5">Professional & Educational Background</h4>
-                  <div className="columns is-multiline">
-                    <div className="column is-half">
-                      <div className="field-display">
-                        <label className="label">Educational Level</label>
-                        <p>{patient.educationalLevel}</p>
-                      </div>
-                    </div>
-                    <div className="column is-half">
-                      <div className="field-display">
-                        <label className="label">Profession</label>
-                        <p>{patient.profession}</p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Treatment Information */}
-                <div className="patient-info-section">
-                  <h4 className="title is-5">Treatment Information</h4>
-                  <div className="columns is-multiline">
-                    <div className="column is-full">
-                      <div className="field-display">
-                        <label className="label">First Appointment Date</label>
-                        <p>{formatDate(patient.firstAppointmentDate)}</p>
-                      </div>
-                    </div>
-                    <div className="column is-full">
-                      <div className="field-display">
-                        <label className="label">Previous Psychological Experience</label>
-                        <p className="preserve-whitespace">
-                          {patient.previousPsychologicalExperience || 'None reported'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Metadata */}
-                <div className="patient-info-section">
-                  <h4 className="title is-5">Record Information</h4>
-                  <div className="columns is-multiline">
-                    <div className="column is-half">
-                      <div className="field-display">
-                        <label className="label">Created At</label>
-                        <p>{formatDate(patient.createdAt)}</p>
-                      </div>
-                    </div>
-                    <div className="column is-half">
-                      <div className="field-display">
-                        <label className="label">Last Updated</label>
-                        <p>{formatDate(patient.updatedAt)}</p>
-                      </div>
+                  <div className="column is-half">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.birthDate')}</label>
+                      <p>{formatDate(patient.birthDate)}</p>
                     </div>
                   </div>
                 </div>
               </div>
-            </>
+
+              <div className="patient-info-section">
+                <h4 className="title is-5">{t('patient.info.contactInfo')}</h4>
+                <div className="columns is-multiline">
+                  <div className="column is-half">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.email')}</label>
+                      <p>{patient.email}</p>
+                    </div>
+                  </div>
+                  <div className="column is-half">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.phoneNumber')}</label>
+                      <p>{patient.phoneNumber}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="patient-info-section">
+                <h4 className="title is-5">{t('patient.info.personalInfo')}</h4>
+                <div className="columns is-multiline">
+                  <div className="column is-one-third">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.gender')}</label>
+                      <p>{t(`enums.gender.${patient.gender}`)}</p>
+                    </div>
+                  </div>
+                  <div className="column is-one-third">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.sexualOrientation')}</label>
+                      <p>{t(`enums.sexualOrientation.${patient.sexualOrientation}`)}</p>
+                    </div>
+                  </div>
+                  <div className="column is-one-third">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.maritalStatus')}</label>
+                      <p>{t(`enums.maritalStatus.${patient.maritalStatus}`)}</p>
+                    </div>
+                  </div>
+                  <div className="column is-one-third">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.numberOfChildren')}</label>
+                      <p>{patient.children}</p>
+                    </div>
+                  </div>
+                  <div className="column is-one-third">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.livesWith')}</label>
+                      <p>{patient.livesWith}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="patient-info-section">
+                <h4 className="title is-5">{t('patient.info.professionalInfo')}</h4>
+                <div className="columns is-multiline">
+                  <div className="column is-half">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.educationalLevel')}</label>
+                      <p>{patient.educationalLevel}</p>
+                    </div>
+                  </div>
+                  <div className="column is-half">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.profession')}</label>
+                      <p>{patient.profession}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="patient-info-section">
+                <h4 className="title is-5">{t('patient.info.treatmentInfo')}</h4>
+                <div className="columns is-multiline">
+                  <div className="column is-full">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.firstAppointmentDate')}</label>
+                      <p>{formatDate(patient.firstAppointmentDate)}</p>
+                    </div>
+                  </div>
+                  <div className="column is-full">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.previousExperience')}</label>
+                      <p className="preserve-whitespace">
+                        {patient.previousPsychologicalExperience || t('patient.info.noneReported')}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="patient-info-section">
+                <h4 className="title is-5">{t('patient.info.recordInfo')}</h4>
+                <div className="columns is-multiline">
+                  <div className="column is-half">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.createdAt')}</label>
+                      <p>{formatDate(patient.createdAt)}</p>
+                    </div>
+                  </div>
+                  <div className="column is-half">
+                    <div className="field-display">
+                      <label className="label">{t('patient.info.lastUpdated')}</label>
+                      <p>{formatDate(patient.updatedAt)}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
 
-          {/* Emergency Contacts Tab */}
           {activeTab === 'contacts' && (
             <div className="content" style={{ marginTop: '1rem' }}>
               <EmergencyContactsTable contacts={emergencyContacts} onChange={() => {}} readOnly />
             </div>
           )}
 
-          {/* Legal Tutors Tab */}
           {activeTab === 'tutors' && (
             <div className="content" style={{ marginTop: '1rem' }}>
               <LegalTutorsTable tutors={legalTutors} onChange={() => {}} readOnly />
+            </div>
+          )}
+
+          {activeTab === 'attachments' && (
+            <div className="content" style={{ marginTop: '1rem' }}>
+              <AttachmentsTable
+                patientId={parseInt(patientId!)}
+                attachments={attachments}
+                onRefresh={loadAttachments}
+              />
             </div>
           )}
         </div>

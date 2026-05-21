@@ -1,106 +1,74 @@
-import React, { Component } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import NoteForm from '../../components/NoteForm/NoteForm';
 import type { Note } from '../../../types/note';
-
-interface NoteEditorProps {
-  patientId?: string;
-  noteId?: string;
-}
-
-interface NoteEditorState {
-  note: Note | null;
-  isLoading: boolean;
-}
-
-class NoteEditorBase extends Component<
-  NoteEditorProps & { navigate: ReturnType<typeof useNavigate> },
-  NoteEditorState
-> {
-  constructor(props: NoteEditorProps & { navigate: ReturnType<typeof useNavigate> }) {
-    super(props);
-    this.state = {
-      note: null,
-      isLoading: true,
-    };
-  }
-
-  async componentDidMount() {
-    const { noteId, patientId } = this.props;
-
-    if (noteId && noteId !== 'new') {
-      try {
-        const result = await window.api.note.getById(parseInt(noteId));
-        if (result.success && result.data) {
-          this.setState({ note: result.data, isLoading: false });
-        } else {
-          console.error('Failed to load note:', result.error);
-          this.setState({ isLoading: false });
-        }
-      } catch (error) {
-        console.error('Error loading note:', error);
-        this.setState({ isLoading: false });
-      }
-    } else if (patientId) {
-      // New note - just set loading to false
-      this.setState({ isLoading: false });
-    }
-  }
-
-  handleSave = () => {
-    const { patientId } = this.props;
-    this.props.navigate(`/patient/${patientId}/notes`);
-  };
-
-  handleCancel = () => {
-    const { patientId } = this.props;
-    this.props.navigate(`/patient/${patientId}/notes`);
-  };
-
-  render() {
-    const { patientId } = this.props;
-    const { note, isLoading } = this.state;
-
-    if (isLoading) {
-      return (
-        <section className="section">
-          <div className="container">
-            <div className="notification is-info is-light">
-              <p>Loading note...</p>
-            </div>
-          </div>
-        </section>
-      );
-    }
-
-    if (!patientId) {
-      return (
-        <section className="section">
-          <div className="container">
-            <div className="notification is-danger is-light">
-              <p>Patient ID is required.</p>
-            </div>
-          </div>
-        </section>
-      );
-    }
-
-    return (
-      <NoteForm
-        patientId={parseInt(patientId)}
-        note={note}
-        onSave={this.handleSave}
-        onCancel={this.handleCancel}
-      />
-    );
-  }
-}
 
 const NoteEditor: React.FC = () => {
   const { patientId, noteId } = useParams<{ patientId: string; noteId: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const [note, setNote] = useState<Note | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  return <NoteEditorBase patientId={patientId} noteId={noteId} navigate={navigate} />;
+  useEffect(() => {
+    const loadNote = async () => {
+      if (noteId && noteId !== 'new') {
+        try {
+          const result = await window.api.note.getById(parseInt(noteId));
+          if (result.success && result.data) {
+            setNote(result.data);
+          } else {
+            console.error('Failed to load note:', result.error);
+          }
+        } catch (error) {
+          console.error('Error loading note:', error);
+        } finally {
+          setIsLoading(false);
+        }
+      } else if (patientId) {
+        setIsLoading(false);
+      }
+    };
+
+    loadNote();
+  }, [noteId, patientId]);
+
+  const handleSave = () => navigate(`/patient/${patientId}/notes`);
+  const handleCancel = () => navigate(`/patient/${patientId}/notes`);
+
+  if (isLoading) {
+    return (
+      <section className="section">
+        <div className="container">
+          <div className="notification is-info is-light">
+            <p>{t('note.form.loadingNote')}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  if (!patientId) {
+    return (
+      <section className="section">
+        <div className="container">
+          <div className="notification is-danger is-light">
+            <p>{t('note.form.patientIdRequired')}</p>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <NoteForm
+      patientId={parseInt(patientId)}
+      note={note}
+      onSave={handleSave}
+      onCancel={handleCancel}
+    />
+  );
 };
 
 export default NoteEditor;

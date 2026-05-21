@@ -7,6 +7,7 @@ import {
   EmergencyContactUpdateInput,
 } from '../types/emergency-contact';
 import { LegalTutor, LegalTutorCreateInput, LegalTutorUpdateInput } from '../types/legal-tutor';
+import { Attachment, AttachmentCreateInput, AttachmentUpdateInput } from '../types/attachment';
 
 // API response type
 interface ApiResponse<T = unknown> {
@@ -83,6 +84,22 @@ contextBridge.exposeInMainWorld('api', {
     delete: (id: number): Promise<ApiResponse> => ipcRenderer.invoke('legalTutor:delete', id),
   },
 
+  attachment: {
+    create: (attachmentData: AttachmentCreateInput): Promise<ApiResponse<Attachment>> =>
+      ipcRenderer.invoke('attachment:create', attachmentData),
+
+    getByPatientId: (patientId: number): Promise<ApiResponse<Attachment[]>> =>
+      ipcRenderer.invoke('attachment:getByPatientId', patientId),
+
+    getById: (id: number): Promise<ApiResponse<Attachment>> =>
+      ipcRenderer.invoke('attachment:getById', id),
+
+    update: (attachmentData: AttachmentUpdateInput): Promise<ApiResponse<Attachment>> =>
+      ipcRenderer.invoke('attachment:update', attachmentData),
+
+    delete: (id: number): Promise<ApiResponse> => ipcRenderer.invoke('attachment:delete', id),
+  },
+
   backup: {
     export: (): Promise<ApiResponse> => ipcRenderer.invoke('backup:export'),
 
@@ -92,6 +109,7 @@ contextBridge.exposeInMainWorld('api', {
         notes: number;
         emergencyContacts: number;
         legalTutors: number;
+        attachments: number;
       }>
     > => ipcRenderer.invoke('backup:import'),
 
@@ -102,5 +120,11 @@ contextBridge.exposeInMainWorld('api', {
     removeImportProgressListener: () => {
       ipcRenderer.removeAllListeners('backup:import-progress');
     },
+  },
+
+  // System utilities
+  shell: {
+    openExternal: (url: string): Promise<ApiResponse> =>
+      ipcRenderer.invoke('shell:openExternal', url),
   },
 });

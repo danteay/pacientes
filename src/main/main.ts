@@ -6,7 +6,9 @@ import { setupPatientHandlers } from './handlers/patient';
 import { setupNoteHandlers } from './handlers/note';
 import { setupEmergencyContactHandlers } from './handlers/emergency-contact';
 import { setupLegalTutorHandlers } from './handlers/legal-tutor';
+import { setupAttachmentHandlers } from './handlers/attachment';
 import { setupBackupHandlers } from './handlers/backup';
+import { setupShellHandlers } from './handlers/shell';
 
 let mainWindow: BrowserWindow | null = null;
 let dbService: DatabaseService;
@@ -52,7 +54,9 @@ function setupIpcHandlers(): void {
   setupNoteHandlers(dbService);
   setupEmergencyContactHandlers(dbService);
   setupLegalTutorHandlers(dbService);
+  setupAttachmentHandlers(dbService);
   setupBackupHandlers(backupService, () => mainWindow);
+  setupShellHandlers();
 }
 
 app.on('ready', async () => {

@@ -6,6 +6,7 @@ import { PatientService } from '../domains/patient/service/patient-service';
 import { NoteService } from '../domains/note/service/note-service';
 import { EmergencyContactService } from '../domains/emergency-contact/service/emergency-contact-service';
 import { LegalTutorService } from '../domains/legal-tutor/service/legal-tutor-service';
+import { AttachmentService } from '../domains/attachment/service/attachment-service';
 import { CreateNoteUseCase } from '../domains/note/usecases/create-note-usecase';
 import { GetNotesStatisticsUseCase } from '../domains/note/usecases/get-notes-statistics-usecase';
 import { runMigrations } from './migrations/umzug';
@@ -37,6 +38,7 @@ export class DatabaseService {
   private noteService: NoteService | null = null;
   private emergencyContactService: EmergencyContactService | null = null;
   private legalTutorService: LegalTutorService | null = null;
+  private attachmentService: AttachmentService | null = null;
 
   // Use Cases resolved from IoC container
   private createNoteUseCase: CreateNoteUseCase | null = null;
@@ -74,6 +76,7 @@ export class DatabaseService {
     this.noteService = container.resolve(NoteService);
     this.emergencyContactService = container.resolve(EmergencyContactService);
     this.legalTutorService = container.resolve(LegalTutorService);
+    this.attachmentService = container.resolve(AttachmentService);
 
     // Resolve use cases from IoC container
     this.createNoteUseCase = container.resolve(CreateNoteUseCase);
@@ -128,6 +131,14 @@ export class DatabaseService {
     return this.legalTutorService!;
   }
 
+  /**
+   * Get attachment service
+   */
+  getAttachmentService(): AttachmentService {
+    this.ensureInitialized();
+    return this.attachmentService!;
+  }
+
   // ==================== Use Case Getters ====================
 
   /**
@@ -170,6 +181,7 @@ export class DatabaseService {
       this.noteService = null;
       this.emergencyContactService = null;
       this.legalTutorService = null;
+      this.attachmentService = null;
       this.createNoteUseCase = null;
       this.getNotesStatisticsUseCase = null;
       this.initialized = false;
@@ -192,6 +204,7 @@ export class DatabaseService {
       !this.noteService ||
       !this.emergencyContactService ||
       !this.legalTutorService ||
+      !this.attachmentService ||
       !this.createNoteUseCase ||
       !this.getNotesStatisticsUseCase
     ) {

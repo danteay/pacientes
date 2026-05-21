@@ -1,24 +1,12 @@
 import React, { useEffect } from 'react';
-import {
-  Patient,
-  PatientStatus,
-  genderToString,
-  sexualOrientationToString,
-  maritalStatusToString,
-} from '../../../types/patient';
+import { useTranslation } from 'react-i18next';
+import { Patient, PatientStatus } from '../../../types/patient';
 import { Note } from '../../../types/note';
 import { useNotes } from '../../hooks/useNotes';
 import { useNotification } from '../../context/NotificationContext';
 import { Button } from '../atoms/Button/Button';
 import { LoadingSpinner } from '../atoms/LoadingSpinner/LoadingSpinner';
 import './PatientNotes.styles.scss';
-
-/**
- * Patient Notes Component
- *
- * Functional component using hooks for state management
- * Follows React best practices and composition patterns
- */
 
 interface PatientNotesProps {
   patient: Patient;
@@ -37,6 +25,7 @@ export const PatientNotes: React.FC<PatientNotesProps> = ({
   onViewNote,
   onViewFullInfo,
 }) => {
+  const { t } = useTranslation();
   const { notes, loading, error, loadNotesByPatientId } = useNotes();
   const { showError } = useNotification();
 
@@ -71,26 +60,11 @@ export const PatientNotes: React.FC<PatientNotesProps> = ({
     }
   };
 
-  const getStatusLabel = (status: PatientStatus): string => {
-    switch (status) {
-      case PatientStatus.ACTIVE:
-        return 'Active';
-      case PatientStatus.PAUSED:
-        return 'Paused';
-      case PatientStatus.MEDICAL_DISCHARGE:
-        return 'Medical Discharge';
-      case PatientStatus.ABANDONED:
-        return 'Abandoned';
-      default:
-        return status;
-    }
-  };
-
   if (loading && notes.length === 0) {
     return (
       <section className="section">
         <div className="container">
-          <LoadingSpinner message="Loading notes..." />
+          <LoadingSpinner message={t('patient.notes.loadingNotes')} />
         </div>
       </section>
     );
@@ -102,96 +76,99 @@ export const PatientNotes: React.FC<PatientNotesProps> = ({
         <div className="box">
           <div className="level">
             <div className="level-left">
-              <Button variant="light" onClick={onBack} title="Back to patient list">
-                ← Back
+              <Button variant="light" onClick={onBack} title={t('patient.info.backToList')}>
+                {t('common.back')}
               </Button>
             </div>
             <div className="level-item">
-              <h2 className="title is-4">Patient Notes</h2>
+              <h2 className="title is-4">{t('patient.notes.patientNotes')}</h2>
             </div>
             <div className="level-right">
               <Button variant="primary" onClick={onAddNote}>
-                + Add New Note
+                {t('patient.notes.addNote')}
               </Button>
             </div>
           </div>
         </div>
 
         <div className="box">
-          <h3 className="title is-5">Patient Information</h3>
+          <h3 className="title is-5">{t('patient.notes.patientInfo')}</h3>
           <div className="content">
             <div className="columns is-multiline">
               <div className="column is-one-third">
-                <strong>Name:</strong> {patient.name}
+                <strong>{t('patient.notes.name')}:</strong> {patient.name}
               </div>
               <div className="column is-one-third">
-                <strong>Age:</strong> {patient.age}
+                <strong>{t('patient.notes.age')}:</strong> {patient.age}
               </div>
               <div className="column is-one-third">
-                <strong>Birth Date:</strong> {patient.birthDate}
+                <strong>{t('patient.notes.birthDate')}:</strong> {patient.birthDate}
               </div>
               <div className="column is-one-third">
-                <strong>Email:</strong> {patient.email}
+                <strong>{t('patient.notes.email')}:</strong> {patient.email}
               </div>
               <div className="column is-one-third">
-                <strong>Phone:</strong> {patient.phoneNumber}
+                <strong>{t('patient.notes.phone')}:</strong> {patient.phoneNumber}
               </div>
               <div className="column is-one-third">
-                <strong>Gender:</strong> {genderToString(patient.gender)}
+                <strong>{t('patient.notes.gender')}:</strong>{' '}
+                {t(`enums.gender.${patient.gender}`)}
               </div>
               <div className="column is-one-third">
-                <strong>Sexual Orientation:</strong>{' '}
-                {sexualOrientationToString(patient.sexualOrientation)}
+                <strong>{t('patient.notes.sexualOrientation')}:</strong>{' '}
+                {t(`enums.sexualOrientation.${patient.sexualOrientation}`)}
               </div>
               <div className="column is-one-third">
-                <strong>Marital Status:</strong> {maritalStatusToString(patient.maritalStatus)}
+                <strong>{t('patient.notes.maritalStatus')}:</strong>{' '}
+                {t(`enums.maritalStatus.${patient.maritalStatus}`)}
               </div>
               <div className="column is-one-third">
-                <strong>Children:</strong> {patient.children}
+                <strong>{t('patient.notes.children')}:</strong> {patient.children}
               </div>
               <div className="column is-one-third">
-                <strong>Educational Level:</strong> {patient.educationalLevel}
+                <strong>{t('patient.notes.educationalLevel')}:</strong> {patient.educationalLevel}
               </div>
               <div className="column is-one-third">
-                <strong>Profession:</strong> {patient.profession}
+                <strong>{t('patient.notes.profession')}:</strong> {patient.profession}
               </div>
               <div className="column is-one-third">
-                <strong>Lives With:</strong> {patient.livesWith}
+                <strong>{t('patient.notes.livesWith')}:</strong> {patient.livesWith}
               </div>
               <div className="column is-one-third">
-                <strong>First Appointment:</strong> {patient.firstAppointmentDate || 'N/A'}
+                <strong>{t('patient.notes.firstAppointment')}:</strong>{' '}
+                {patient.firstAppointmentDate || t('common.notAvailable')}
               </div>
               <div className="column is-one-third">
-                <strong>Status:</strong>{' '}
+                <strong>{t('patient.notes.status')}:</strong>{' '}
                 <span className={`tag ${getStatusBadgeClass(patient.status)}`}>
-                  {getStatusLabel(patient.status)}
+                  {t(`enums.patientStatus.${patient.status}`)}
                 </span>
               </div>
               <div className="column is-full">
-                <strong>Previous Psychological Experience:</strong>{' '}
-                {patient.previousPsychologicalExperience || 'None'}
+                <strong>{t('patient.notes.previousExperience')}:</strong>{' '}
+                {patient.previousPsychologicalExperience || t('patient.notes.none')}
               </div>
             </div>
           </div>
           <div className="has-text-right" style={{ marginTop: '1rem' }}>
             <Button variant="primary" onClick={onViewFullInfo} size="small">
-              View Full Information
+              {t('patient.notes.viewFullInfo')}
             </Button>
           </div>
         </div>
 
         {notes.length === 0 ? (
           <div className="notification is-warning is-light">
-            <p>No notes found for this patient. Click "Add New Note" to create one.</p>
+            <p>{t('patient.notes.noNotes')}</p>
           </div>
         ) : (
           <div className="box">
             <table className="table is-fullwidth is-striped is-hoverable">
               <thead>
                 <tr>
-                  <th>Created Date</th>
-                  <th>Title</th>
-                  <th>Actions</th>
+                  <th>{t('patient.notes.createdDate')}</th>
+                  <th>{t('patient.notes.title')}</th>
+                  <th>{t('patient.notes.actions')}</th>
                 </tr>
               </thead>
               <tbody>
@@ -205,17 +182,17 @@ export const PatientNotes: React.FC<PatientNotesProps> = ({
                           variant="info"
                           size="small"
                           onClick={() => onViewNote(note)}
-                          title="View note"
+                          title={t('patient.notes.viewNote')}
                         >
-                          View
+                          {t('patient.notes.view')}
                         </Button>
                         <Button
                           variant="warning"
                           size="small"
                           onClick={() => onEditNote(note)}
-                          title="Edit note"
+                          title={t('patient.notes.editNote')}
                         >
-                          Edit
+                          {t('patient.notes.edit')}
                         </Button>
                       </div>
                     </td>

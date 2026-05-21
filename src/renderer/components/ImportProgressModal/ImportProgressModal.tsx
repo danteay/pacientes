@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import './styles.scss';
 
 interface ImportProgress {
@@ -19,6 +20,8 @@ const ImportProgressModal: React.FC<ImportProgressModalProps> = ({
   progress,
   onClose,
 }) => {
+  const { t } = useTranslation();
+
   if (!isActive || !progress) return null;
 
   const percentage = Math.round((progress.current / progress.total) * 100);
@@ -29,7 +32,7 @@ const ImportProgressModal: React.FC<ImportProgressModalProps> = ({
       <div className="modal-background" onClick={isComplete ? onClose : undefined}></div>
       <div className="modal-card">
         <header className="modal-card-head">
-          <p className="modal-card-title">Importing Database</p>
+          <p className="modal-card-title">{t('import.title')}</p>
           {isComplete && <button className="delete" aria-label="close" onClick={onClose}></button>}
         </header>
         <section className="modal-card-body">
@@ -38,13 +41,15 @@ const ImportProgressModal: React.FC<ImportProgressModalProps> = ({
             <progress className="progress is-primary" value={progress.current} max={progress.total}>
               {percentage}%
             </progress>
-            <p className="has-text-centered has-text-grey">{percentage}% complete</p>
+            <p className="has-text-centered has-text-grey">
+              {t('import.complete', { percentage })}
+            </p>
           </div>
         </section>
         <footer className="modal-card-foot">
           {isComplete && (
             <button className="button is-primary" onClick={onClose}>
-              Close
+              {t('import.close')}
             </button>
           )}
         </footer>
